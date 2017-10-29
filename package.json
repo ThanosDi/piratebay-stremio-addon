@@ -4,11 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
   "author": "The Chat Shop <dev@thechatshop.com> (https://www.thechatshop.com/)",
   "license": "ISC",
   "dependencies": {
-    "stremio-addons": "^2.8.13"
+    "imdb": "^1.1.0",
+    "magnet-uri": "^5.1.7",
+    "stremio-addons": "^2.8.13",
+    "thepiratebay": "^1.4.5",
+    "torrent-name-parser": "^0.6.5"
   }
 }
