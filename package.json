@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "imdb": "^1.1.0",
+    "left-pad": "^1.1.3",
     "magnet-uri": "^5.1.7",
     "stremio-addons": "^2.8.13",
     "thepiratebay": "^1.4.5"
