@@ -9,3 +9,4 @@ Fetch streams from piratebay
 
 ## Add addon
 Open stremio, go to addons and on the bottom of the page add `http://localhost:7000/stremioget/stremio/v1` as a `Addon Repository Url`
+and then install as normal.

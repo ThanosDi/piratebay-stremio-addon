@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "start-dev": "nodemon index.js"
   },
   "author": "The Chat Shop <dev@thechatshop.com> (https://www.thechatshop.com/)",
   "license": "ISC",
