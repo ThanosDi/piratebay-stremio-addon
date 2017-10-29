@@ -2,6 +2,7 @@ const PirateBay = require('thepiratebay');
 const Stremio = require('stremio-addons');
 const magnet = require('magnet-uri');
 const imdb = require('imdb');
+const leftPad = require('left-pad');
 
 const manifest = {
 	// See https://github.com/Stremio/stremio-addons/blob/master/docs/api/manifest.md for full explanation
@@ -60,15 +61,8 @@ const addon = new Stremio.Server({
 const createTitle = (movieTitle, args) => {
 	let title = movieTitle;
 	if (args.query.type === 'series') {
-		let season = args.query.season;
-		let episode = args.query.episode;
-
-		if (parseInt(season) < 10){
-			season = `0${season}`;
-		}
-		if (parseInt(episode) < 10){
-			episode = `0${episode}`;
-		}
+		let season = leftPad(args.query.season, 2, '0');
+		let episode = leftPad(args.query.episode, 2, '0');
 
 		title = `${movieTitle} S${season}E${episode}`;
 	}
