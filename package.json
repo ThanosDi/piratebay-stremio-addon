@@ -1,0 +1,14 @@
+{
+  "name": "stremio-piratebay-plugin",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "The Chat Shop <dev@thechatshop.com> (https://www.thechatshop.com/)",
+  "license": "ISC",
+  "dependencies": {
+    "stremio-addons": "^2.8.13"
+  }
+}
