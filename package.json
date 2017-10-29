@@ -13,7 +13,6 @@
     "imdb": "^1.1.0",
     "magnet-uri": "^5.1.7",
     "stremio-addons": "^2.8.13",
-    "thepiratebay": "^1.4.5",
-    "torrent-name-parser": "^0.6.5"
+    "thepiratebay": "^1.4.5"
   }
 }
