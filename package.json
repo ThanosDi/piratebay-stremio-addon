@@ -7,7 +7,7 @@
     "start": "node index.js",
     "start-dev": "nodemon index.js"
   },
-  "author": "The Chat Shop <dev@thechatshop.com> (https://www.thechatshop.com/)",
+  "author": "ThanosDi <thanosdi@live.com>",
   "license": "ISC",
   "dependencies": {
     "imdb": "git+https://git@github.com/ThanosDi/imdb.git",
