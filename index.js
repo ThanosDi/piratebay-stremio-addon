@@ -13,7 +13,7 @@ const manifest = {
 	'logo': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'isFree': true,
 	'email': 'thanosdi@live.com',
-	'endpoint': 'https://piratebay-stremio-addon.herokuapp.com/',
+	'endpoint': 'https://piratebay-stremio-addon.herokuapp.com/stremio/v1',
 	// Properties that determine when Stremio picks this add-on
 	'types': ['movie', 'series'], // your add-on will be preferred for those content types
 	'idProperty': 'imdb_id', // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
