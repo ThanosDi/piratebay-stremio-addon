@@ -6,7 +6,7 @@ const imdb = require('imdb');
 const manifest = {
 	'id': 'org.stremio.piratebay',
 	'version': '1.1.0',
-	'name': 'PirateBay Addon-local',
+	'name': 'PirateBay Addon',
 	'description': 'Fetch PirateBay entries on a single episode or series.',
 	'icon': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'logo': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
