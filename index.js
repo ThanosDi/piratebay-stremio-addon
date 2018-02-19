@@ -4,15 +4,15 @@ const magnet = require('magnet-uri');
 const imdb = require('imdb');
 
 const manifest = {
-	'id': 'org.stremio.piratebay-localhost',
+	'id': 'org.stremio.piratebay',
 	'version': '1.1.0',
-	'name': 'PirateBay Addon-localhost',
-	'description': 'Fetch PirateBay entries on a single episode or series.-localhost',
+	'name': 'PirateBay Addon',
+	'description': 'Fetch PirateBay entries on a single episode or series.',
 	'icon': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'logo': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'isFree': true,
 	'email': 'thanosdi@live.com',
-	'endpoint': 'http://localhost:7000/stremioget/stremio/v1',
+	'endpoint': 'https://piratebay-stremio-addon.herokuapp.com/stremio/v1',
 	'types': ['movie', 'series'],
 	'idProperty': 'imdb_id', // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
 	// We need this for pre-4.0 Stremio, it's the obsolete equivalent of types/idProperty
