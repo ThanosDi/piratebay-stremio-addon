@@ -4,18 +4,16 @@ const magnet = require('magnet-uri');
 const imdb = require('imdb');
 
 const manifest = {
-	// See https://github.com/Stremio/stremio-addons/blob/master/docs/api/manifest.md for full explanation
-	'id': 'org.stremio.piratebay',
-	'version': '1.0.0',
-	'name': 'PirateBay Addon',
-	'description': 'Fetch PirateBay entries on a single episode.',
+	'id': 'org.stremio.piratebay-localhost',
+	'version': '1.1.0',
+	'name': 'PirateBay Addon-localhost',
+	'description': 'Fetch PirateBay entries on a single episode or series.-localhost',
 	'icon': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'logo': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'isFree': true,
 	'email': 'thanosdi@live.com',
-	'endpoint': 'https://piratebay-stremio-addon.herokuapp.com/stremio/v1',
-	// Properties that determine when Stremio picks this add-on
-	'types': ['movie', 'series'], // your add-on will be preferred for those content types
+	'endpoint': 'http://localhost:7000/stremioget/stremio/v1',
+	'types': ['movie', 'series'],
 	'idProperty': 'imdb_id', // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
 	// We need this for pre-4.0 Stremio, it's the obsolete equivalent of types/idProperty
 	'filter': { 'query.imdb_id': { '$exists': true }, 'query.type': { '$in':['series','movie'] } }
@@ -23,23 +21,16 @@ const manifest = {
 
 const addon = new Stremio.Server({
 	'stream.find': function(args, callback) {
-		imdb(args.query.imdb_id, function(err, data) {
-			if(err) {
-				console.error(err.stack);
-			}
-			if(data){
-				const imdbTitle = (!data.originalTitle || data.originalTitle === 'N/A') ? data.title : data.originalTitle;
-				const title = createTitle(imdbTitle, args);
+		createTitle(args)
+			.then(title => {
 				PirateBay.search(title, {
 					orderBy: 'seeds',
 					sortBy: 'desc'
-				}).then((results) => {
+				}).then(results => {
 					return callback(null, results.slice(0, 4).map( episode => {
 						const {infoHash, announce } = magnet.decode(episode.magnetLink);
 						const availability = episode.seeders == 0 ? 0 : episode.seeders < 5 ? 1 : 2;
-
 						const detail = `${episode.name} S:${episode.seeders}`;
-
 						return {
 							infoHash,
 							name: 'PTB',
@@ -53,29 +44,78 @@ const addon = new Stremio.Server({
 					console.error(err);
 					return callback(new Error('internal'));
 				});
-			}
-		});
-	}
+			});
+	},
+	// 'meta.search': function(args, callback) {
+	// 	const query = args.query;
+	// 	return PirateBay.search(query, {
+	// 		orderBy: 'seeds',
+	// 		sortBy: 'desc'
+	// 	}).then(results => {
+	// 		const response = results.slice(0, 4).map( episode => {
+	// 			const {infoHash, announce } = magnet.decode(episode.magnetLink);
+	// 			const availability = episode.seeders == 0 ? 0 : episode.seeders < 5 ? 1 : 2;
+	// 			const detail = `${episode.name} S:${episode.seeders}`;
+	// 			return {
+	// 				id: episode.id,                                       // unique ID for the media, will be returned as "basic_id" in the request object later
+	// 				name: episode.name,                                          // title of media
+	// 				poster: 'http://thetvdb.com/banners/posters/78804-52.jpg',    // image link
+	// 				posterShape: 'regular',                                       // can also be 'landscape' or 'square'
+	// 				banner: 'http://thetvdb.com/banners/graphical/78804-g44.jpg', // image link
+	// 				genre: ['Entertainment'],
+	// 				isFree: 1,                                                    // some aren't
+	// 				popularity: 3831,                                             // the larger, the more popular this item is
+	// 				popularities: { basic: 3831 },                                // same as 'popularity'; use this if you want to provide different sort orders in your manifest
+	// 				type: 'movie',
+	// 				stream: {
+	// 					infoHash,
+	// 					mapIdx: 0,
+	// 					name: 'PTB',
+	// 					title: detail,
+	// 					isFree: true,
+	// 					availability
+	// 				}
+	// 			};
+	// 		});
+	// 		return callback(null, {
+	// 			query,
+	// 			results: response
+	// 		});
+	// 	}).catch(err => {
+	// 		console.log(err.message);
+	// 		callback(err.message);
+	// 	});
+	// }
 }, manifest);
 
-const createTitle = (movieTitle, args) => {
-	let title = movieTitle;
+/*  Construct title based on movie or series
+ *  If series get title name by imdb_id and append season and episode
+ *  @return String title
+ */
+const createTitle = args => new Promise((resolve, reject) => {
+	let title = args.query.imdb_id;
 	if (args.query.type === 'series') {
-		let season = args.query.season;
-		let episode = args.query.episode;
+		imdb(args.query.imdb_id, function(err, data) {
+			if(err) {
+				return reject(new Error('internal'));
+			}
+			if(data){
+				const movieTitle = (!data.originalTitle || data.originalTitle === 'N/A') ? data.title : data.originalTitle;
 
-		if (parseInt(season) < 10){
-			season = `0${season}`;
-		}
-		if (parseInt(episode) < 10){
-			episode = `0${episode}`;
-		}
+				let season = args.query.season;
+				let episode = args.query.episode;
 
-		title = `${movieTitle} S${season}E${episode}`;
+				if (parseInt(season) < 10) season = `0${season}`;
+				if (parseInt(episode) < 10) episode = `0${episode}`;
+
+				title = `${movieTitle} S${season}E${episode}`;
+				return resolve(title);
+			}
+		});
+	} else {
+		return resolve(title);
 	}
-
-	return title;
-};
+});
 
 const server = require('http').createServer((req, res) => {
 	addon.middleware(req, res, function() { res.end() }); // wire the middleware - also compatible with connect / express
