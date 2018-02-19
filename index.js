@@ -6,7 +6,7 @@ const imdb = require('imdb');
 const manifest = {
 	'id': 'org.stremio.piratebay',
 	'version': '1.1.0',
-	'name': 'PirateBay Addon',
+	'name': 'PirateBay Addon-local',
 	'description': 'Fetch PirateBay entries on a single episode or series.',
 	'icon': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'logo': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
@@ -27,7 +27,7 @@ const addon = new Stremio.Server({
 					orderBy: 'seeds',
 					sortBy: 'desc'
 				}).then(results => {
-					return callback(null, results.slice(0, 4).map( episode => {
+					return callback(null, results.results.slice(0, 4).map( episode => {
 						const {infoHash, announce } = magnet.decode(episode.magnetLink);
 						const availability = episode.seeders == 0 ? 0 : episode.seeders < 5 ? 1 : 2;
 						const detail = `${episode.name} S:${episode.seeders}`;
@@ -41,7 +41,7 @@ const addon = new Stremio.Server({
 						};
 					}).filter(elem => elem.availability > 0));
 				}).catch((err) => {
-					console.error(err);
+					console.error(err.message);
 					return callback(new Error('internal'));
 				});
 			});

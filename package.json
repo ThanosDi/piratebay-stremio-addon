@@ -13,6 +13,6 @@
     "imdb": "https://github.com/ThanosDi/imdb.git",
     "magnet-uri": "^5.1.7",
     "stremio-addons": "^2.8.13",
-    "thepiratebay": "^1.4.5"
+    "thepiratebay": "https://github.com/jaruba/thepiratebay/tarball/master"
   }
 }
