@@ -6,6 +6,9 @@ const torrentStream = require('torrent-stream');
 const base64 = require('base-64');
 const axios = require('axios');
 const _ = require('lodash');
+const parseVideo = require("video-name-parser");
+
+const {nameToImdb, cinemeta} = require('./src/tools');
 
 const manifest = {
 	'id': 'org.stremio.piratebay',
@@ -38,9 +41,6 @@ const manifestLocal = {
 	// We need this for pre-4.0 Stremio, it's the obsolete equivalent of types/idProperty
 };
 
-const client = new Stremio.Client();
-client.add('http://cinemeta.strem.io/stremioget/stremio/v1');
-
 
 // return axios.get(`https://dummyimage.com/600x400/000/fff&text=${episode.name}`)
 // 	.then(({data}) => {
@@ -60,64 +60,61 @@ const addon = new Stremio.Server({
 		const decodedData = base64.decode(args.query.ptb_id);
 		const [magnetLink, query, seeders] = decodedData.split('|||');
 
-		const parseVideo = require("video-name-parser");
-		const parsedVideo = await parseVideo(query);
-		const nameToImdb = require("name-to-imdb");
 
-		return nameToImdb({ name: parsedVideo.name }, function(err, res, inf) {
-			console.log(parsedVideo.name);
-			console.log(res);
-			client.meta.get({ query: { imdb_id: res } }, function(err, meta) {
-				return new Promise(function(resolve, reject) {
-					const engine = new torrentStream(magnetLink, {
-						connections: 30
-					});
-					engine.ready(() => {
-						resolve(engine);
-					});
-				})
-					.then(engine => {
-						const files = engine.files.map( (file, mapIdx) => {
-							return {
-								id: file.name,
-								title: file.name,
-								publishedAt: new Date().toISOString(),
-								thumbnail: _.get(meta,'fanart.hdtvlogo[0].url')
-								|| 'https://lh3.googleusercontent.com/-wTZicECGczgV7jZnLHtnCqVbCn1a3dVll7fp4uAaJOBuF47Lh97yTR_96odCvpzYCn9VsFUKA=w128-h128-e365',
-								length: file.length,
-								stream: {
-									infoHash: engine.infoHash,
-									mapIdx
-								}
-							}
-						});
-						const response = {
-							id:`ptb_id:${args.query.ptb_id}`,
-							ptb_id: args.query.ptb_id,
-							name: `${query}, ${seeders}`,                                          // title of media
-							poster:_.get(meta,'fanart.showbackground[0].url')|| '',    // image link
-							posterShape: 'regular',                                       // can also be 'landscape' or 'square'
-							banner: _.get(meta,'fanart.showbackground[0].url')|| '', // image link
-							genre: meta.genre,
-							isFree: 1,
-							imdbRating: meta.imdbRating,
-							popularity: 3831,                                             // the larger, the more popular this item is
-							popularities: { basic: 3831 },
-							type: 'channel',
-							description: meta.description,
-							videos: files
-						};
-						callback(null, response);
-					});
+		let parsedVideo;
+		try{
+			parsedVideo = await parseVideo(query);
+		} catch(e) {
+			console.log(e.message);
+		}
+
+		console.log('parsedVideo', parsedVideo);
+		const imdb_id = await nameToImdb(parsedVideo.name);
+		console.log('name', imdb_id);
+
+		const meta = await cinemeta(imdb_id);
+
+		return new Promise(function(resolve, reject) {
+			const engine = new torrentStream(magnetLink, {
+				connections: 30
 			});
-
-		});
-
-
-
-
-
-
+			engine.ready(() => {
+				resolve(engine);
+			});
+		})
+			.then(engine => {
+				const files = engine.files.map( (file, mapIdx) => {
+					return {
+						id: file.name,
+						title: file.name,
+						publishedAt: new Date().toISOString(),
+						thumbnail: _.get(meta,'fanart.hdtvlogo[0].url')
+						|| 'https://lh3.googleusercontent.com/-wTZicECGczgV7jZnLHtnCqVbCn1a3dVll7fp4uAaJOBuF47Lh97yTR_96odCvpzYCn9VsFUKA=w128-h128-e365',
+						length: file.length,
+						stream: {
+							infoHash: engine.infoHash,
+							mapIdx
+						}
+					}
+				});
+				const response = {
+					id:`ptb_id:${args.query.ptb_id}`,
+					ptb_id: args.query.ptb_id,
+					name: `${query}, ${seeders}`,                                          // title of media
+					poster:_.get(meta,'fanart.showbackground[0].url')|| '',    // image link
+					posterShape: 'regular',                                       // can also be 'landscape' or 'square'
+					banner: _.get(meta,'fanart.showbackground[0].url')|| '', // image link
+					genre: meta.genre,
+					isFree: 1,
+					imdbRating: meta.imdbRating,
+					popularity: 3831,                                             // the larger, the more popular this item is
+					popularities: { basic: 3831 },
+					type: 'channel',
+					description: meta.description,
+					videos: files
+				};
+				callback(null, response);
+			});
 	},
 	'stream.find': function(args, callback) {
 		console.log('stream.find', args);
