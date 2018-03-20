@@ -11,7 +11,7 @@ const {
 
 const manifest = {
 	'id': 'org.stremio.piratebay',
-	'version': '1.1.0',
+	'version': '1.2.0',
 	'name': 'PirateBay Addon',
 	'description': 'Fetch PirateBay entries on a single episode or series.',
 	'icon': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
@@ -27,14 +27,14 @@ const manifest = {
 
 const manifestLocal = {
 	'id': 'org.stremio.piratebay-local',
-	'version': '1.1.0',
+	'version': '1.2.0',
 	'name': 'PirateBay Addon-local',
 	'description': 'Fetch PirateBay entries on a single episode or series.-local',
 	'icon': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'logo': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'isFree': true,
 	'email': 'thanosdi@live.com',
-	'endpoint': 'http://localhost:7001/stremioget/stremio/v1',
+	'endpoint': 'http://localhost:7000/stremioget/stremio/v1',
 	'types': ['movie', 'series', 'tv', 'channel'],
 	'idProperty': ['ptb_id', 'imdb_id'], // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
 	// We need this for pre-4.0 Stremio, it's the obsolete equivalent of types/idProperty
@@ -43,7 +43,6 @@ const manifestLocal = {
 const addon = new Stremio.Server({
 	'meta.search': async (args, callback) => {
 		const query = args.query;
-		console.log(query);
 		const results = await ptbSearch(query);
 
 		const response = results.slice(0, 4).map( episode => {
@@ -71,7 +70,6 @@ const addon = new Stremio.Server({
 	'meta.get': async function(args, callback, user) {
 		const decodedData = base64.decode(args.query.ptb_id);
 		const [magnetLink, query, seeders] = decodedData.split('|||');
-		console.log('query', query);
 		const meta = await getMetaDataByName(query);
 
 		const response = {
@@ -136,7 +134,7 @@ const addon = new Stremio.Server({
 		return callback(null, results);
 	},
 
-}, manifestLocal);
+}, manifest);
 
 /*  Construct title based on movie or series
  *  If series get title name by imdb_id and append season and episode
