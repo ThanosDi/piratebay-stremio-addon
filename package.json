@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node ./src/index.js",
+    "dev": "nodemon ./src/index.js"
   },
   "author": "ThanosDi <thanosdi@live.com>",
   "license": "ISC",
@@ -17,8 +17,9 @@
     "magnet-uri": "^5.1.7",
     "name-to-imdb": "^2.0.1",
     "stremio-addons": "^2.8.13",
-    "thepiratebay": "https://github.com/jaruba/thepiratebay/tarball/master",
+    "thepiratebay": "^1.4.7",
     "torrent-stream": "^1.0.3",
+    "video-extensions": "^1.1.0",
     "video-name-parser": "^1.4.6"
   }
 }
