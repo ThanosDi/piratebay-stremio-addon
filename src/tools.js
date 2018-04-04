@@ -57,6 +57,7 @@ const torrentStreamEngine = magnetLink => {
 
 const getMetaDataByName = async name => {
 	const meta = {
+		name:'',
 		poster: '',
 		banner: '',
 		genre: '',
@@ -68,6 +69,7 @@ const getMetaDataByName = async name => {
 
 	try{
 		const video = await parseVideo(name);
+		console.log('video name', video);
 		const imdb_id = await nameToImdb(video.name);
 		const metaData = await cinemeta(imdb_id);
 		meta.banner = _.get(metaData, 'background') || _.get(metaData, 'fanart.showbackground[0].url');
@@ -77,6 +79,7 @@ const getMetaDataByName = async name => {
 		meta.description = _.get(metaData, 'description') || '';
 		meta.thumbnail = _.get(metaData, 'fanart.hdtvlogo[0].url');
 		meta.year = _.get(metaData, 'year');
+		meta.name = video.name || '';
 		return meta;
 	} catch(e) {
 		console.log(`getMetaDataByName ${e.message}`);

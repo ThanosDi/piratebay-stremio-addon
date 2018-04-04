@@ -1,6 +1,5 @@
 const Stremio = require('stremio-addons');
 const magnet = require('magnet-uri');
-const base64 = require('base-64');
 const videoExtensions = require('video-extensions');
 const {
 	imdbIdToName,
@@ -19,10 +18,9 @@ const manifest = {
 	'isFree': true,
 	'email': 'thanosdi@live.com',
 	'endpoint': 'https://piratebay-stremio-addon.herokuapp.com/stremio/v1',
-	'types': ['movie', 'series'],
+	'types': ['movie', 'series', 'tv', 'channel'],
 	'idProperty': ['ptb_id', 'imdb_id'], // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
 	// We need this for pre-4.0 Stremio, it's the obsolete equivalent of types/idProperty
-	'filter': { 'query.imdb_id': { '$exists': true }, 'query.type': { '$in':['series','movie'] } }
 };
 
 const manifestLocal = {
@@ -47,12 +45,12 @@ const addon = new Stremio.Server({
 
 		const response = results.slice(0, 4).map( episode => {
 			const id = `${episode.magnetLink}|||${episode.name}|||S:${episode.seeders}`;
-			const encodedData = base64.encode(id);
+			const encodedData = new Buffer(id).toString('base64');
 			return {
 				id:`ptb_id:${encodedData}`,
 				ptb_id: `${encodedData}`,
-				video_id: `${episode.name} , S:${episode.seeders}`,
-				name: `${episode.name} , S:${episode.seeders}`,
+				video_id: `${episode.name.split('.').join(' ')} , S:${episode.seeders}`,
+				name: `${episode.name.split('.').join(' ')} , S:${episode.seeders}`,
 				poster: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/The_Pirate_Bay_logo.svg/2000px-The_Pirate_Bay_logo.svg.png',
 				posterShape: 'regular',
 				banner: 'http://thetvdb.com/banners/graphical/78804-g44.jpg',
@@ -68,22 +66,21 @@ const addon = new Stremio.Server({
 
 	},
 	'meta.get': async function(args, callback, user) {
-		const decodedData = base64.decode(args.query.ptb_id);
+		const decodedData = new Buffer(args.query.ptb_id, 'base64').toString('ascii');
+
+		console.log(decodedData);
 		const [magnetLink, query, seeders] = decodedData.split('|||');
 		const meta = await getMetaDataByName(query);
-
 		const response = {
 			id:`ptb_id:${args.query.ptb_id}`,
 			ptb_id: args.query.ptb_id,
-			name: `${query}, ${seeders}`,
+			name: `${meta.name || query.split('.').join(' ')} `,
 			poster: meta.poster,
 			posterShape: 'regular',
 			banner: meta.banner,
 			genre: meta.genre,
 			isFree: 1,
 			imdbRating: meta.imdbRating,
-			popularity: 3831,
-			popularities: { basic: 3831 },
 			type: 'movie',
 			year:meta.year,
 			description: meta.description,
@@ -95,7 +92,8 @@ const addon = new Stremio.Server({
 	'stream.find': async (args, callback) => {
 		/* Handle search results with ptb_id */
 		if (args.query.type === 'movie' && args.query.ptb_id) {
-			const decodedData = base64.decode(args.query.ptb_id);
+			const decodedData = new Buffer(args.query.ptb_id, 'base64').toString('ascii');
+
 			const [magnetLink, query, seeders] = decodedData.split('|||');
 
 			const {files, infoHash} = await torrentStreamEngine(magnetLink);
@@ -110,7 +108,11 @@ const addon = new Stremio.Server({
 						title: file.name
 					}
 				})
-				.filter(file => videoExtensions.indexOf(file.title.split('.').pop()) !== -1);
+				.filter(file => videoExtensions.indexOf(file.title.split('.').pop()) !== -1)
+				.map(file => {
+					file.title = file.title.split('.').join(' ');
+					return file;
+				});
 
 			return callback(null, results);
 		}
@@ -145,9 +147,7 @@ const createTitle = async args => {
 	switch (args.query.type) {
 		case 'series':
 			try {
-				// console.log('seriessssssssss');
 				const data = await imdbIdToName(args.query.imdb_id);
-				// console.log('data', data);
 				const movieTitle = (!data.originalTitle || data.originalTitle === 'N/A') ? data.title : data.originalTitle;
 
 				let season = args.query.season;
@@ -173,4 +173,4 @@ const server = require('http').createServer((req, res) => {
 	.on('listening', () => {
 		console.log(`Piratebay Stremio Addon listening on ${server.address().port}`);
 	})
-	.listen(process.env.PORT || 7001);
+	.listen(process.env.PORT || 7000);
