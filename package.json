@@ -15,7 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.18.0",
-    "imdb": "https://github.com/ThanosDi/imdb.git",
+    "imdb": "https://github.com/mhsjlw/imdb.git",
     "lodash": "^4.17.5",
     "magnet-uri": "^5.1.7",
     "name-to-imdb": "^2.0.1",

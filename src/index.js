@@ -17,10 +17,11 @@ const manifest = {
 	'logo': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'isFree': true,
 	'email': 'thanosdi@live.com',
-	'endpoint': 'https://piratebay-stremio-addon.herokuapp.com/stremio/v1',
+	'endpoint': 'https://td-stremio-plugin.herokuapp.com/stremio/v1',
 	'types': ['movie', 'series', 'tv', 'channel'],
 	'idProperty': ['ptb_id', 'imdb_id'], // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
 	// We need this for pre-4.0 Stremio, it's the obsolete equivalent of types/idProperty
+	'filter': { 'query.imdb_id': { '$exists': true }, 'query.type': { '$in':['movie', 'series', 'tv', 'channel'] } }
 };
 
 const manifestLocal = {
@@ -36,16 +37,24 @@ const manifestLocal = {
 	'types': ['movie', 'series', 'tv', 'channel'],
 	'idProperty': ['ptb_id', 'imdb_id'], // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
 	// We need this for pre-4.0 Stremio, it's the obsolete equivalent of types/idProperty
+	'filter': { 'query.imdb_id': { '$exists': true }, 'query.type': { '$in':['movie', 'series', 'tv', 'channel'] } }
 };
 
 const addon = new Stremio.Server({
 	'meta.search': async (args, callback) => {
+		console.log('meta.search args', args);
 		const query = args.query;
-		const results = await ptbSearch(query);
-
+		let results = [];
+		try {
+			results = await ptbSearch(query);
+			console.log('meta.search results', results);
+		} catch (e) {
+			console.log('e.message', e.message);
+		}
 		const response = results.slice(0, 4).map( episode => {
 			const id = `${episode.magnetLink}|||${episode.name}|||S:${episode.seeders}`;
 			const encodedData = new Buffer(id).toString('base64');
+			console.log('encodedData', encodedData);
 			return {
 				id:`ptb_id:${encodedData}`,
 				ptb_id: `${encodedData}`,
@@ -57,8 +66,8 @@ const addon = new Stremio.Server({
 				isFree: true,
 				type: 'movie'
 			};
-
 		});
+		console.log('meta.search', response);
 		return callback(null, {
 			query,
 			results: response
@@ -85,6 +94,7 @@ const addon = new Stremio.Server({
 			year:meta.year,
 			description: meta.description,
 		};
+		console.log('meta.get', response);
 
 		callback(null, response);
 
@@ -113,7 +123,7 @@ const addon = new Stremio.Server({
 					file.title = file.title.split('.').join(' ');
 					return file;
 				});
-
+			console.log(`stream.find: ${args.query.ptb_id}`, results);
 			return callback(null, results);
 		}
 		/* Handle non ptb_id results*/
@@ -133,6 +143,7 @@ const addon = new Stremio.Server({
 				availability
 			};
 		});
+		console.log('stream.find', results);
 		return callback(null, results);
 	},
 
@@ -161,7 +172,6 @@ const createTitle = async args => {
 			} catch (e) {
 				return new Error(e.message);
 			}
-			break;
 		case 'movie':
 			return title;
 	}
