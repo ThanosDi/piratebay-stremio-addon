@@ -19,23 +19,23 @@ const manifest = {
 	'email': 'thanosdi@live.com',
 	'endpoint': 'https://piratebay-stremio-addon.herokuapp.com/stremio/v1',
 	'types': ['movie', 'series'],
-	'idProperty': 'imdb_id', // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
+	'idProperty': ['ptb_id', 'imdb_id'], // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
 	// We need this for pre-4.0 Stremio, it's the obsolete equivalent of types/idProperty
 	'filter': { 'query.imdb_id': { '$exists': true }, 'query.type': { '$in':['series','movie'] } }
 };
 
 const manifestLocal = {
-	'id': 'org.stremio.piratebay',
+	'id': 'org.stremio.piratebay.local',
 	'version': '1.3.0',
-	'name': 'PirateBay Addon',
-	'description': 'Fetch PirateBay entries on a single episode or series.',
+	'name': 'PirateBay Addon local',
+	'description': 'Fetch PirateBay entries on a single episode or series. local',
 	'icon': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'logo': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'isFree': true,
 	'email': 'thanosdi@live.com',
 	'endpoint': 'http://localhost:7000/stremioget/stremio/v1',
 	'types': ['movie', 'series'],
-	'idProperty': 'imdb_id', // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
+	'idProperty': ['ptb_id', 'imdb_id'], // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
 	// We need this for pre-4.0 Stremio, it's the obsolete equivalent of types/idProperty
 	'filter': { 'query.imdb_id': { '$exists': true }, 'query.type': { '$in':['series','movie'] } }
 };
@@ -55,7 +55,6 @@ const addon = new Stremio.Server({
 					name: `${episode.name.split('.').join(' ')} , S:${episode.seeders}`,
 					poster: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/The_Pirate_Bay_logo.svg/2000px-The_Pirate_Bay_logo.svg.png',
 					posterShape: 'regular',
-					banner: 'http://thetvdb.com/banners/graphical/78804-g44.jpg',
 					isFree: true,
 					type: 'movie'
 				};
@@ -67,13 +66,11 @@ const addon = new Stremio.Server({
 		} catch (e) {
 			console.log('e.message', e.message);
 		}
-
-
 	},
 	'meta.get': async function(args, callback, user) {
 		const decodedData = new Buffer(args.query.ptb_id, 'base64').toString('ascii');
-
 		const [magnetLink, query, seeders] = decodedData.split('|||');
+
 		const meta = await getMetaDataByName(query);
 		const response = {
 			id:`ptb_id:${args.query.ptb_id}`,

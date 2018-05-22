@@ -4,7 +4,6 @@ const torrentStream = require('torrent-stream');
 const parseVideo = require('video-name-parser');
 const _ = require('lodash');
 const PirateBay = require('thepiratebay');
-const axios = require('axios');
 
 const nameToImdb = name => {
 	return new Promise((resolve, rejected) => {
@@ -59,6 +58,7 @@ const getMetaDataByName = async name => {
 		imdbRating: 0,
 		description: '',
 		year: 2018,
+		overview: '',
 		thumbnail: 'https://lh3.googleusercontent.com/-wTZicECGczgV7jZnLHtnCqVbCn1a3dVll7fp4uAaJOBuF47Lh97yTR_96odCvpzYCn9VsFUKA=w128-h128-e365'
 	};
 
@@ -66,12 +66,14 @@ const getMetaDataByName = async name => {
 		const video = await parseVideo(name);
 		const imdb_id = await nameToImdb(video.name);
 		const metaData = await cinemeta(imdb_id);
+		console.log('metaaaaaaaaaa',  metaData);
 		meta.banner = _.get(metaData, 'background') || _.get(metaData, 'fanart.showbackground[0].url');
 		meta.poster = _.get(metaData, 'background') ||_.get(metaData, 'fanart.showbackground[0].url');
 		meta.genre = _.get(metaData, 'genre') || '';
 		meta.imdbRating = _.get(metaData, 'imdbRating') || '';
 		meta.description = _.get(metaData, 'description') || '';
-		meta.thumbnail = _.get(metaData, 'fanart.hdtvlogo[0].url');
+		meta.overview = _.get(metaData, 'description') || '';
+		meta.thumbnail = _.get(metaData, 'logo') || meta.thumbnail;
 		meta.year = _.get(metaData, 'year');
 		meta.name = video.name || '';
 		return meta;

@@ -14,7 +14,6 @@
   "author": "ThanosDi <thanosdi@live.com>",
   "license": "ISC",
   "dependencies": {
-    "axios": "^0.18.0",
     "imdb": "https://github.com/mhsjlw/imdb.git",
     "lodash": "^4.17.5",
     "magnet-uri": "^5.1.7",
