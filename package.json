@@ -20,7 +20,7 @@
     "magnet-uri": "^5.1.7",
     "name-to-imdb": "^2.0.1",
     "stremio-addons": "^2.8.13",
-    "thepiratebay": "^1.4.7",
+    "thepiratebay": "https://github.com/jaruba/thepiratebay/tarball/master",
     "torrent-stream": "^1.0.3",
     "video-extensions": "^1.1.0",
     "video-name-parser": "^1.4.6"

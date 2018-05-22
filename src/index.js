@@ -10,34 +10,34 @@ const {
 
 const manifest = {
 	'id': 'org.stremio.piratebay',
-	'version': '1.2.0',
+	'version': '1.3.0',
 	'name': 'PirateBay Addon',
 	'description': 'Fetch PirateBay entries on a single episode or series.',
 	'icon': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'logo': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'isFree': true,
 	'email': 'thanosdi@live.com',
-	'endpoint': 'https://td-stremio-plugin.herokuapp.com/stremio/v1',
-	'types': ['movie', 'series', 'tv', 'channel'],
-	'idProperty': ['ptb_id', 'imdb_id'], // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
+	'endpoint': 'https://piratebay-stremio-addon.herokuapp.com/stremio/v1',
+	'types': ['movie', 'series'],
+	'idProperty': 'imdb_id', // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
 	// We need this for pre-4.0 Stremio, it's the obsolete equivalent of types/idProperty
-	'filter': { 'query.imdb_id': { '$exists': true }, 'query.type': { '$in':['movie', 'series', 'tv', 'channel'] } }
+	'filter': { 'query.imdb_id': { '$exists': true }, 'query.type': { '$in':['series','movie'] } }
 };
 
 const manifestLocal = {
-	'id': 'org.stremio.piratebay-local',
-	'version': '1.2.0',
-	'name': 'PirateBay Addon-local',
-	'description': 'Fetch PirateBay entries on a single episode or series.-local',
+	'id': 'org.stremio.piratebay',
+	'version': '1.3.0',
+	'name': 'PirateBay Addon',
+	'description': 'Fetch PirateBay entries on a single episode or series.',
 	'icon': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'logo': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
 	'isFree': true,
 	'email': 'thanosdi@live.com',
 	'endpoint': 'http://localhost:7000/stremioget/stremio/v1',
-	'types': ['movie', 'series', 'tv', 'channel'],
-	'idProperty': ['ptb_id', 'imdb_id'], // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
+	'types': ['movie', 'series'],
+	'idProperty': 'imdb_id', // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
 	// We need this for pre-4.0 Stremio, it's the obsolete equivalent of types/idProperty
-	'filter': { 'query.imdb_id': { '$exists': true }, 'query.type': { '$in':['movie', 'series', 'tv', 'channel'] } }
+	'filter': { 'query.imdb_id': { '$exists': true }, 'query.type': { '$in':['series','movie'] } }
 };
 
 const addon = new Stremio.Server({
@@ -100,6 +100,7 @@ const addon = new Stremio.Server({
 
 	},
 	'stream.find': async (args, callback) => {
+		console.log('args', args);
 		/* Handle search results with ptb_id */
 		if (args.query.type === 'movie' && args.query.ptb_id) {
 			const decodedData = new Buffer(args.query.ptb_id, 'base64').toString('ascii');
@@ -123,28 +124,29 @@ const addon = new Stremio.Server({
 					file.title = file.title.split('.').join(' ');
 					return file;
 				});
-			console.log(`stream.find: ${args.query.ptb_id}`, results);
+			// console.log(`stream.find: ${args.query.ptb_id}`, results);
 			return callback(null, results);
 		}
 		/* Handle non ptb_id results*/
 		const title = await createTitle(args);
-
-		const resolve = await ptbSearch(title, args.query.type);
-
-		const results = resolve.slice(0, 4).map( episode => {
-			const {infoHash, announce } = magnet.decode(episode.magnetLink);
-			const availability = episode.seeders == 0 ? 0 : episode.seeders < 5 ? 1 : 2;
-			const detail = `${episode.name} S:${episode.seeders}`;
-			return {
-				infoHash,
-				name: 'PTB',
-				title: detail,
-				isFree: true,
-				availability
-			};
-		});
-		console.log('stream.find', results);
-		return callback(null, results);
+		try {
+			const {results} = await ptbSearch(title, args.query.type);
+			const resolve = results.slice(0, 4).map( episode => {
+				const {infoHash, announce } = magnet.decode(episode.magnetLink);
+				const availability = episode.seeders == 0 ? 0 : episode.seeders < 5 ? 1 : 2;
+				const detail = `${episode.name}
+👤 ${episode.seeders}`;
+				return {
+					infoHash,
+					name: 'PTB',
+					title: detail,
+					availability
+				};
+			});
+			return callback(null, resolve);
+		} catch (e) {
+			console.log('ptbsearch error:', e.message);
+		}
 	},
 
 }, manifest);

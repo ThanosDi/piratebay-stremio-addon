@@ -4,6 +4,7 @@ const torrentStream = require('torrent-stream');
 const parseVideo = require('video-name-parser');
 const _ = require('lodash');
 const PirateBay = require('thepiratebay');
+const axios = require('axios');
 
 const nameToImdb = name => {
 	return new Promise((resolve, rejected) => {
@@ -32,15 +33,9 @@ const cinemeta = imdb_id => {
 };
 
 
-const imdbIdToName = imdbId => {
-	return new Promise((resolve, rejected) => {
-		imdb(imdbId, function(err, data) {
-			if(err){
-				rejected( new Error(err.message));
-			}
-			resolve(data);
-		});
-	});
+const imdbIdToName = async imdbId => {
+	const i = new imdb();
+	return await i.getMovie(imdbId);
 };
 
 const torrentStreamEngine = magnetLink => {
@@ -94,6 +89,7 @@ const ptbSearch = async query => {
 		category: 'video'
 	});
 };
+
 module.exports = {
 	imdbIdToName,
 	torrentStreamEngine,
