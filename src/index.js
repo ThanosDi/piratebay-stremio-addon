@@ -42,14 +42,12 @@ const manifestLocal = {
 
 const addon = new Stremio.Server({
 	'meta.search': async (args, callback) => {
-		console.log('meta.search args', args);
 		const query = args.query;
 		try {
 			const {results} = await ptbSearch(query);
 			const response = results.slice(0, 4).map( episode => {
 				const id = `${episode.magnetLink}|||${episode.name}|||S:${episode.seeders}`;
 				const encodedData = new Buffer(id).toString('base64');
-				console.log('encodedData', encodedData);
 				return {
 					id:`ptb_id:${encodedData}`,
 					ptb_id: `${encodedData}`,
@@ -75,7 +73,6 @@ const addon = new Stremio.Server({
 	'meta.get': async function(args, callback, user) {
 		const decodedData = new Buffer(args.query.ptb_id, 'base64').toString('ascii');
 
-		console.log(decodedData);
 		const [magnetLink, query, seeders] = decodedData.split('|||');
 		const meta = await getMetaDataByName(query);
 		const response = {
@@ -92,13 +89,10 @@ const addon = new Stremio.Server({
 			year:meta.year,
 			description: meta.description,
 		};
-		console.log('meta.get', response);
 
 		callback(null, response);
-
 	},
 	'stream.find': async (args, callback) => {
-		console.log('args', args);
 		/* Handle search results with ptb_id */
 		if (args.query.type === 'movie' && args.query.ptb_id) {
 			const decodedData = new Buffer(args.query.ptb_id, 'base64').toString('ascii');
@@ -122,7 +116,6 @@ const addon = new Stremio.Server({
 					file.title = file.title.split('.').join(' ');
 					return file;
 				});
-			// console.log(`stream.find: ${args.query.ptb_id}`, results);
 			return callback(null, results);
 		}
 		/* Handle non ptb_id results*/
@@ -146,7 +139,6 @@ const addon = new Stremio.Server({
 			console.log('ptbsearch error:', e.message);
 		}
 	},
-
 }, manifest);
 
 /*  Construct title based on movie or series
