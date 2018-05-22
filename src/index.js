@@ -44,34 +44,32 @@ const addon = new Stremio.Server({
 	'meta.search': async (args, callback) => {
 		console.log('meta.search args', args);
 		const query = args.query;
-		let results = [];
 		try {
-			results = await ptbSearch(query);
-			console.log('meta.search results', results);
+			const {results} = await ptbSearch(query);
+			const response = results.slice(0, 4).map( episode => {
+				const id = `${episode.magnetLink}|||${episode.name}|||S:${episode.seeders}`;
+				const encodedData = new Buffer(id).toString('base64');
+				console.log('encodedData', encodedData);
+				return {
+					id:`ptb_id:${encodedData}`,
+					ptb_id: `${encodedData}`,
+					video_id: `${episode.name.split('.').join(' ')} , S:${episode.seeders}`,
+					name: `${episode.name.split('.').join(' ')} , S:${episode.seeders}`,
+					poster: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/The_Pirate_Bay_logo.svg/2000px-The_Pirate_Bay_logo.svg.png',
+					posterShape: 'regular',
+					banner: 'http://thetvdb.com/banners/graphical/78804-g44.jpg',
+					isFree: true,
+					type: 'movie'
+				};
+			});
+			return callback(null, {
+				query,
+				results: response
+			});
 		} catch (e) {
 			console.log('e.message', e.message);
 		}
-		const response = results.slice(0, 4).map( episode => {
-			const id = `${episode.magnetLink}|||${episode.name}|||S:${episode.seeders}`;
-			const encodedData = new Buffer(id).toString('base64');
-			console.log('encodedData', encodedData);
-			return {
-				id:`ptb_id:${encodedData}`,
-				ptb_id: `${encodedData}`,
-				video_id: `${episode.name.split('.').join(' ')} , S:${episode.seeders}`,
-				name: `${episode.name.split('.').join(' ')} , S:${episode.seeders}`,
-				poster: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/The_Pirate_Bay_logo.svg/2000px-The_Pirate_Bay_logo.svg.png',
-				posterShape: 'regular',
-				banner: 'http://thetvdb.com/banners/graphical/78804-g44.jpg',
-				isFree: true,
-				type: 'movie'
-			};
-		});
-		console.log('meta.search', response);
-		return callback(null, {
-			query,
-			results: response
-		});
+
 
 	},
 	'meta.get': async function(args, callback, user) {
