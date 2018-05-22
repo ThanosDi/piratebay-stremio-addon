@@ -25,3 +25,17 @@ Make sure the plugin is installed and running
 Open a movie or series and enjoy
 
 ![Enjoy](screenshots/4.%20Enjoy.png?raw=true)
+
+## New Feature
+Now you can search directly piratebay from withing Stremio.
+
+On the search field type your query and you can get the results on the bottom of the search results.
+![Seach PTB directly](screenshots/PTB-seach.png?raw=true)
+
+Clicking on a result card will list the contents of the magnet link.
+![List contents of magnet link](screenshots/PTB-search-results.png?raw=true)
+
+The best part is that you can now add the results to your library so you wont have to search again and again for this magnet link.
+![Save magnet link](screenshots/PTB-save-results.png?raw=true)
+
+All results are considered as movies.

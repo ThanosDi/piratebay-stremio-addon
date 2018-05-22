@@ -2,17 +2,27 @@
   "name": "stremio-piratebay-plugin",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/index.js",
+  "engines": {
+    "npm": "~5.6.0",
+    "node": "8.9.4"
+  },
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node ./src/index.js",
+    "dev": "nodemon ./src/index.js"
   },
   "author": "ThanosDi <thanosdi@live.com>",
   "license": "ISC",
   "dependencies": {
-    "imdb": "https://github.com/ThanosDi/imdb.git",
+    "axios": "^0.18.0",
+    "imdb": "https://github.com/mhsjlw/imdb.git",
+    "lodash": "^4.17.5",
     "magnet-uri": "^5.1.7",
+    "name-to-imdb": "^2.0.1",
     "stremio-addons": "^2.8.13",
-    "thepiratebay": "https://github.com/jaruba/thepiratebay/tarball/master"
+    "thepiratebay": "https://github.com/jaruba/thepiratebay/tarball/master",
+    "torrent-stream": "^1.0.3",
+    "video-extensions": "^1.1.0",
+    "video-name-parser": "^1.4.6"
   }
 }
