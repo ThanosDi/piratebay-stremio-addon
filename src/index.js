@@ -44,7 +44,7 @@ const addon = new Stremio.Server({
 	'meta.search': async (args, callback) => {
 		const query = args.query;
 		try {
-			const results = await ptbSearch(query);
+			const {results} = await ptbSearch(query);
 			const response = results.slice(0, 4).map( episode => {
 				const id = `${episode.magnetLink}|||${episode.name}|||S:${episode.seeders}`;
 				const encodedData = new Buffer(id).toString('base64');
@@ -118,7 +118,7 @@ const addon = new Stremio.Server({
 		/* Handle non ptb_id results*/
 		const title = await createTitle(args);
 		try {
-			const results = await ptbSearch(title, args.query.type);
+			const {results} = await ptbSearch(title, args.query.type);
 			const resolve = results.slice(0, 4).map( episode => {
 				const {infoHash, announce } = magnet.decode(episode.magnetLink);
 				const availability = episode.seeders == 0 ? 0 : episode.seeders < 5 ? 1 : 2;
