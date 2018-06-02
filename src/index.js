@@ -13,12 +13,13 @@ const manifest = {
 	'version': '1.3.0',
 	'name': 'PirateBay Addon',
 	'description': 'Fetch PirateBay entries on a single episode or series.',
-	'icon': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
-	'logo': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
+	'icon': 'https://static.wareziens.net/wp-content/image.php?url=http://www.turbopix.fr/up/1326291999.png',
+	'logo': 'https://static.wareziens.net/wp-content/image.php?url=http://www.turbopix.fr/up/1326291999.png',
 	'isFree': true,
 	'email': 'thanosdi@live.com',
 	'endpoint': 'https://piratebay-stremio-addon.herokuapp.com/stremio/v1',
 	'types': ['movie', 'series'],
+	'background':'http://wallpapercraze.com/images/wallpapers/thepiratebay-77708.jpeg',
 	'idProperty': ['ptb_id', 'imdb_id'], // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
 	// We need this for pre-4.0 Stremio, it's the obsolete equivalent of types/idProperty
 	'filter': { 'query.imdb_id': { '$exists': true }, 'query.type': { '$in':['series','movie'] } }
@@ -29,12 +30,13 @@ const manifestLocal = {
 	'version': '1.3.0',
 	'name': 'PirateBay Addon local',
 	'description': 'Fetch PirateBay entries on a single episode or series. local',
-	'icon': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
-	'logo': 'https://files.gamebanana.com/img/ico/sprays/apirateslifeforme2007tpbpicrip.png',
+	'icon': 'https://static.wareziens.net/wp-content/image.php?url=http://www.turbopix.fr/up/1326291999.png',
+	'logo': 'https://static.wareziens.net/wp-content/image.php?url=http://www.turbopix.fr/up/1326291999.png',
 	'isFree': true,
 	'email': 'thanosdi@live.com',
 	'endpoint': 'http://localhost:7000/stremioget/stremio/v1',
 	'types': ['movie', 'series'],
+	'background':'http://wallpapercraze.com/images/wallpapers/thepiratebay-77708.jpeg',
 	'idProperty': ['ptb_id', 'imdb_id'], // the property to use as an ID for your add-on; your add-on will be preferred for items with that property; can be an array
 	// We need this for pre-4.0 Stremio, it's the obsolete equivalent of types/idProperty
 	'filter': { 'query.imdb_id': { '$exists': true }, 'query.type': { '$in':['series','movie'] } }
