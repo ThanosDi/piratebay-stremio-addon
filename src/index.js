@@ -118,21 +118,30 @@ const addon = new Stremio.Server({
 			return callback(null, results);
 		}
 		/* Handle non ptb_id results*/
-		const title = await createTitle(args);
+		const titleInfo = await createTitle(args);
 		try {
-			const {results} = await ptbSearch(title, args.query.type);
-			const resolve = results.slice(0, 4).map( episode => {
-				const {infoHash, announce } = magnet.decode(episode.magnetLink);
-				const availability = episode.seeders == 0 ? 0 : episode.seeders < 5 ? 1 : 2;
-				const detail = `${episode.name}
-👤 ${episode.seeders}`;
-				return {
-					infoHash,
-					name: 'PTB',
-					title: detail,
-					availability
-				};
-			});
+			const singleEpisodes = await ptbSearch(titleInfo.fullTitle, args.query.type);
+			const wholeSeasons = await ptbSearch(titleInfo.seriesTitle, args.query.type);
+			const results = []
+				.concat(singleEpisodes.results.slice(0, 4))
+				.concat(wholeSeasons.results
+					.filter(result => titleInfo.keywords.some(parts => parts.every(part => result.name.toLowerCase().includes(part)))));
+
+			console.log('torrents:', results.map(result => result.name));
+	
+			const resolve = results
+				.sort((a, b) => b.seeders - a.seeders)
+				.map(result => {
+					const { infoHash, announce } = magnet.decode(result.magnetLink);
+					const availability = result.seeders == 0 ? 0 : result.seeders < 5 ? 1 : 2;
+					const detail = `${result.name}\n👤 ${result.seeders}`;
+					return {
+						infoHash,
+						name: 'PTB',
+						title: detail,
+						availability
+					};
+				});
 			return callback(null, resolve);
 		} catch (e) {
 			console.log('ptbsearch error:', e.message);
@@ -150,16 +159,27 @@ const createTitle = async args => {
 		case 'series':
 			try {
 				const data = await imdbIdToName(args.query.imdb_id);
-				const movieTitle = (!data.originalTitle || data.originalTitle === 'N/A') ? data.title : data.originalTitle;
+				let seriesTitle = (!data.originalTitle || data.originalTitle === 'N/A') ? data.title : data.originalTitle;
+				seriesTitle = seriesTitle.toLowerCase();
 
-				let season = args.query.season;
-				let episode = args.query.episode;
+				const seasonNum = parseInt(args.query.season);
+				const episodeNum = parseInt(args.query.episode);
 
-				if (parseInt(season) < 10) season = `0${season}`;
-				if (parseInt(episode) < 10) episode = `0${episode}`;
+				const season = seasonNum < 10 ? `0${seasonNum}` : `${seasonNum}`;
+				const episode = episodeNum < 10 ? `0${episodeNum}` : `${episodeNum}`;
 
-				title = `${movieTitle} S${season}E${episode}`;
-				return title;
+				return {
+					seriesTitle: seriesTitle,
+					season: season,
+					episode: episode,
+					fullTitle:`${seriesTitle} s${season}e${episode}`,
+					keywords: [
+						[seriesTitle, `s${season} `],
+						[seriesTitle, `season`, ` ${seasonNum} `],
+						[seriesTitle, `complete`, `series`],
+						[seriesTitle, `seasons`]
+					]
+				};
 			} catch (e) {
 				return new Error(e.message);
 			}
