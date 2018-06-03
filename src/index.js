@@ -120,29 +120,32 @@ const addon = new Stremio.Server({
 		/* Handle non ptb_id results*/
 		const titleInfo = await createTitle(args);
 		try {
-			const singleEpisodes = await ptbSearch(titleInfo.fullTitle, args.query.type);
-			const wholeSeasons = await ptbSearch(titleInfo.seriesTitle, args.query.type);
-			const results = []
-				.concat(singleEpisodes.results.slice(0, 4))
-				.concat(wholeSeasons.results
-					.filter(result => titleInfo.keywords.some(parts => parts.every(part => result.name.toLowerCase().includes(part)))));
+			Promise.all([
+				ptbSearch(titleInfo.episodeTitle, args.query.type),
+				ptbSearch(titleInfo.seriesTitle, args.query.type)
+			]).then(values => {
+				const results = []
+					.concat(values[0].results.slice(0, 4))
+					.concat(values[1].results
+						.filter(result => titleInfo.keywords.some(parts => parts.every(part => result.name.toLowerCase().includes(part)))));
 
-			console.log('torrents:', results.map(result => result.name));
-	
-			const resolve = results
-				.sort((a, b) => b.seeders - a.seeders)
-				.map(result => {
-					const { infoHash, announce } = magnet.decode(result.magnetLink);
-					const availability = result.seeders == 0 ? 0 : result.seeders < 5 ? 1 : 2;
-					const detail = `${result.name}\n👤 ${result.seeders}`;
-					return {
-						infoHash,
-						name: 'PTB',
-						title: detail,
-						availability
-					};
-				});
-			return callback(null, resolve);
+				console.log('torrents:', results.map(result => result.name));
+
+				const resolve = results
+					.sort((a, b) => b.seeders - a.seeders)
+					.map(result => {
+						const { infoHash, announce } = magnet.decode(result.magnetLink);
+						const availability = result.seeders == 0 ? 0 : result.seeders < 5 ? 1 : 2;
+						const detail = `${result.name}\n👤 ${result.seeders}`;
+						return {
+							infoHash,
+							name: 'PTB',
+							title: detail,
+							availability
+						};
+					});
+				return callback(null, resolve);
+			});
 		} catch (e) {
 			console.log('ptbsearch error:', e.message);
 		}
@@ -172,7 +175,7 @@ const createTitle = async args => {
 					seriesTitle: seriesTitle,
 					season: season,
 					episode: episode,
-					fullTitle:`${seriesTitle} s${season}e${episode}`,
+					episodeTitle:`${seriesTitle} s${season}e${episode}`,
 					keywords: [
 						[seriesTitle, `s${season} `],
 						[seriesTitle, `season`, ` ${seasonNum} `],
