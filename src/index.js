@@ -3,6 +3,7 @@ const magnet = require('magnet-uri');
 const videoExtensions = require('video-extensions');
 const {
 	imdbIdToName,
+	cinemeta,
 	torrentStreamEngine,
 	getMetaDataByName,
 	ptbSearch
@@ -119,36 +120,47 @@ const addon = new Stremio.Server({
 		}
 		/* Handle non ptb_id results*/
 		const titleInfo = await createTitle(args);
-		try {
-			Promise.all([
-				ptbSearch(titleInfo.episodeTitle, args.query.type),
-				ptbSearch(titleInfo.seriesTitle, args.query.type)
-			]).then(values => {
-				const results = []
-					.concat(values[0].results.slice(0, 4))
-					.concat(values[1].results
-						.filter(result => titleInfo.keywords.some(parts => parts.every(part => result.name.toLowerCase().includes(part)))));
-
-				console.log('torrents:', results.map(result => result.name));
-
-				const resolve = results
-					.sort((a, b) => b.seeders - a.seeders)
-					.map(result => {
-						const { infoHash, announce } = magnet.decode(result.magnetLink);
-						const availability = result.seeders == 0 ? 0 : result.seeders < 5 ? 1 : 2;
-						const detail = `${result.name}\n👤 ${result.seeders}`;
-						return {
-							infoHash,
-							name: 'PTB',
-							title: detail,
-							availability
-						};
-					});
-				return callback(null, resolve);
-			});
-		} catch (e) {
-			console.log('ptbsearch error:', e.message);
+		const promises = [ptbSearch(titleInfo.title, args.query.type)];
+		if (args.query.type === 'series') {
+			promises.push(ptbSearch(titleInfo.seriesTitle, args.query.type));
+			promises.push(ptbSearch(titleInfo.episodeTitle, args.query.type));
 		}
+		Promise.all(
+			promises
+		).then(results => {
+			let torrents = [];
+			if (args.query.type === 'series') {
+				torrents = []
+					.concat(results[0].results.concat(results[1].results)
+						.filter(result => titleInfo.keywords.some(parts => parts.every(part => result.name.toLowerCase().includes(part)))))
+					.concat(results[2].results.slice(0, 4));
+			} else {
+				torrents = results[0].results.slice(0, 4);
+			}
+
+			console.log('torrents:', torrents.map(torrent => torrent.name));
+
+			const resolve = torrents
+				.filter(torrent => torrent.seeders > 0)
+				.sort((a, b) => b.seeders - a.seeders)
+				.map(torrent => {
+					const { infoHash, announce } = magnet.decode(torrent.magnetLink);
+					const availability = torrent.seeders == 0 ? 0 : torrent.seeders < 5 ? 1 : 2;
+					const detail = `${torrent.name}\n👤 ${torrent.seeders}`;
+
+					return {
+						infoHash,
+						name: 'PTB',
+						title: detail,
+						availability
+					};
+				});
+			return callback(null, resolve);
+		}).catch((error) => {
+	    	console.error(error);
+	   	 	return callback(new Error('ptbsearch error:', error.message));
+	  	});
+
 	},
 }, manifest);
 
@@ -163,7 +175,7 @@ const createTitle = async args => {
 			try {
 				const data = await imdbIdToName(args.query.imdb_id);
 				let seriesTitle = (!data.originalTitle || data.originalTitle === 'N/A') ? data.title : data.originalTitle;
-				seriesTitle = seriesTitle.toLowerCase();
+				seriesTitle = seriesTitle.toLowerCase().replace(/[^0-9a-z_ ]/gi, ''); // to lowercase and remove all non-alphanumeric chars
 
 				const seasonNum = parseInt(args.query.season);
 				const episodeNum = parseInt(args.query.episode);
@@ -172,6 +184,7 @@ const createTitle = async args => {
 				const episode = episodeNum < 10 ? `0${episodeNum}` : `${episodeNum}`;
 
 				return {
+					title: title,
 					seriesTitle: seriesTitle,
 					season: season,
 					episode: episode,
@@ -187,7 +200,9 @@ const createTitle = async args => {
 				return new Error(e.message);
 			}
 		case 'movie':
-			return title;
+			return {
+				title: title
+			}
 	}
 };
 
