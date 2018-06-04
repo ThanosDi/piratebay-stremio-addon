@@ -3,7 +3,6 @@ const magnet = require('magnet-uri');
 const videoExtensions = require('video-extensions');
 const {
 	imdbIdToName,
-	cinemeta,
 	torrentStreamEngine,
 	getMetaDataByName,
 	ptbSearch
@@ -131,8 +130,12 @@ const addon = new Stremio.Server({
 			let torrents = [];
 			if (args.query.type === 'series') {
 				torrents = []
-					.concat(results[0].results.concat(results[1].results)
-						.filter(result => titleInfo.keywords.some(parts => parts.every(part => result.name.toLowerCase().includes(part)))))
+					.concat(results[0].results
+						.filter(result => titleInfo.nameMatcher.test(result.name.split('.').join(' ').replace(/[\':]/g, '')))
+						.slice(0, 4))
+					.concat(results[1].results
+						.filter(result => titleInfo.nameMatcher.test(result.name.split('.').join(' ').replace(/[\':]/g, '')))
+						.slice(0, 4))
 					.concat(results[2].results.slice(0, 4));
 			} else {
 				torrents = results[0].results.slice(0, 4);
@@ -146,7 +149,7 @@ const addon = new Stremio.Server({
 				.map(torrent => {
 					const { infoHash, announce } = magnet.decode(torrent.magnetLink);
 					const availability = torrent.seeders == 0 ? 0 : torrent.seeders < 5 ? 1 : 2;
-					const detail = `${torrent.name}\n👤 ${torrent.seeders}`;
+					const detail = `${torrent.name.replace(/,/g, ' ')}\n👤 ${torrent.seeders}`;
 
 					return {
 						infoHash,
@@ -186,15 +189,8 @@ const createTitle = async args => {
 				return {
 					title: title,
 					seriesTitle: seriesTitle,
-					season: season,
-					episode: episode,
 					episodeTitle:`${seriesTitle} s${season}e${episode}`,
-					keywords: [
-						[seriesTitle, `s${season} `],
-						[seriesTitle, `season`, ` ${seasonNum} `],
-						[seriesTitle, `complete`, `series`],
-						[seriesTitle, `seasons`]
-					]
+					nameMatcher: new RegExp(`\\b${seriesTitle}\\b.*(\\bseasons?\\b[^a-zA-Z]*(\\bs?0?${seasonNum}\\b|\\bs?\\d{1,2}\\b[^a-zA-Z]*-[^a-zA-Z]*\\bs?\\d{1,2}\\b)|\\bs${season}\\b|((\\bcomplete|all|full\\b).*(\\bseries|seasons\\b)))`, 'i')
 				};
 			} catch (e) {
 				return new Error(e.message);
