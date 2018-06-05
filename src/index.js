@@ -190,7 +190,23 @@ const createTitle = async args => {
 					title: title,
 					seriesTitle: seriesTitle,
 					episodeTitle:`${seriesTitle} s${season}e${episode}`,
-					nameMatcher: new RegExp(`\\b${seriesTitle}\\b.*(\\bseasons?\\b[^a-zA-Z]*(\\bs?0?${seasonNum}\\b|\\bs?\\d{1,2}\\b[^a-zA-Z]*-[^a-zA-Z]*\\bs?\\d{1,2}\\b)|\\bs${season}\\b|((\\bcomplete|all|full\\b).*(\\bseries|seasons\\b)))`, 'i')
+					nameMatcher: new RegExp(
+						`\\b${seriesTitle}\\b.*` + // match series title folowed by any characters
+							`(` + // start capturing second condition
+								// first variation
+								`\\bseasons?\\b[^a-zA-Z]*` + // contains 'season'/'seasons' followed by non-alphabetic characters
+									`(` + // start capturing sub condition
+										`\\bs?0?${seasonNum}\\b` + // followed by season number ex:'4'/'04'/'s04'/'1,2,3,4'/'1 2 3 4'
+										`|\\b[01]?\\d\\b[^a-zA-Z]*-[^a-zA-Z]*\\b[01]?\\d\\b` + // or followed by season range '1-4'/'01-04'/'1-12'
+									`)` + // finish capturing subcondition
+								// second variation
+								`|\\bs${season}\\b` + // or constains only season indentifier 's04'/'s12'
+								// third variation
+								`|\\bs[01]?\\d\\b[^a-zA-Z]*-[^a-zA-Z]*\\bs[01]?\\d\\b` + // or contains season range 's01 - s04'/'s01.-.s04'/'s1-s12'
+								// fourth variation
+								`|((\\bcomplete|all|full\\b).*(\\bseries|seasons\\b))` + // or contains any two word variation from (complete,all,full)+(series,seasons)
+							`)` // finish capturing second condition
+					, 'i') // case insensitive matcher
 				};
 			} catch (e) {
 				return new Error(e.message);
