@@ -47,7 +47,7 @@ const addon = new Stremio.Server({
 		const query = args.query;
 		try {
 			const {results} = await ptbSearch(query);
-			const response = results.slice(0, 4).map( episode => {
+			const response = results.slice(0, 7).map( episode => {
 				const id = `${episode.magnetLink}|||${episode.name}|||S:${episode.seeders}`;
 				const encodedData = new Buffer(id).toString('base64');
 				return {
@@ -73,48 +73,25 @@ const addon = new Stremio.Server({
 		const decodedData = new Buffer(args.query.ptb_id, 'base64').toString('ascii');
 		const [magnetLink, query, seeders] = decodedData.split('|||');
 
-		const meta = await getMetaDataByName(query);
-		const response = {
-			id:`ptb_id:${args.query.ptb_id}`,
-			ptb_id: args.query.ptb_id,
-			name: `${meta.name || query.split('.').join(' ')} `,
-			poster: meta.poster,
-			posterShape: 'regular',
-			banner: meta.banner,
-			genre: meta.genre,
-			isFree: 1,
-			imdbRating: meta.imdbRating,
-			type: 'movie',
-			year:meta.year,
-			description: meta.description,
-		};
+		let meta = await getMetaDataByName(query);
+		if (!meta) {
+			const files = await filesStream(magnetLink);
+			meta = await getMetaDataByName(files[0].title);
+		}
+		meta.id = `ptb_id:${args.query.ptb_id}`;
+		meta.ptb_id = args.query.ptb_id;
+		meta.type = 'movie';
+		meta.name = query;
 
-		callback(null, response);
+		return callback(null, meta);
 	},
 	'stream.find': async (args, callback) => {
 		/* Handle search results with ptb_id */
-		if (args.query.type === 'movie' && args.query.ptb_id) {
+		if (args.query.ptb_id) {
 			const decodedData = new Buffer(args.query.ptb_id, 'base64').toString('ascii');
-
 			const [magnetLink, query, seeders] = decodedData.split('|||');
 
-			const {files, infoHash} = await torrentStreamEngine(magnetLink);
-			const availability = seeders == 0 ? 0 : seeders < 5 ? 1 : 2;
-			const results = files
-				.map((file, fileIdx) => {
-					return {
-						infoHash,
-						fileIdx,
-						name: 'PTB',
-						availability,
-						title: file.name
-					}
-				})
-				.filter(file => videoExtensions.indexOf(file.title.split('.').pop()) !== -1)
-				.map(file => {
-					file.title = file.title.split('.').join(' ');
-					return file;
-				});
+			const results = await filesStream(magnetLink, seeders);
 			return callback(null, results);
 		}
 		/* Handle non ptb_id results*/
@@ -166,6 +143,30 @@ const addon = new Stremio.Server({
 
 	},
 }, manifest);
+
+/*
+ * Reads torrent and maps all video files to Stream object
+ */
+const filesStream = async (magnetLink, seeders = 5) => {
+	try {
+		const availability = seeders == 0 ? 0 : seeders < 5 ? 1 : 2;
+		const { files, infoHash } = await torrentStreamEngine(magnetLink);
+
+		return files
+			.map((file, fileIdx) => {
+				return {
+					infoHash,
+					fileIdx,
+					name: 'PTB',
+					availability,
+					title: file.name
+				}
+			})
+			.filter(file => videoExtensions.indexOf(file.title.split('.').pop()) !== -1);
+	} catch (e) {
+		return new Error(e.message);
+	}
+}
 
 /*  Construct title based on movie or series
  *  If series get title name by imdb_id and append season and episode

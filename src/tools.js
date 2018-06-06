@@ -1,14 +1,15 @@
 const Stremio = require('stremio-addons');
 const imdb = require('imdb');
+const toImdb = require("name-to-imdb");
 const torrentStream = require('torrent-stream');
 const parseVideo = require('video-name-parser');
+const tnp = require("torrent-name-parser");
 const _ = require('lodash');
 const PirateBay = require('thepiratebay');
 
-const nameToImdb = name => {
+const nameToImdbId = name => {
 	return new Promise((resolve, rejected) => {
-		const nameToImdb = require("name-to-imdb");
-		nameToImdb({ name }, function(err, res, inf) {
+		toImdb({ name }, function(err, res, inf) {
 			if(err){
 				rejected( new Error(err.message));
 			}
@@ -31,7 +32,6 @@ const cinemeta = imdb_id => {
 	});
 };
 
-
 const imdbIdToName = async imdbId => {
 	const i = new imdb();
 	return await i.getMovie(imdbId);
@@ -50,36 +50,39 @@ const torrentStreamEngine = magnetLink => {
 
 
 const getMetaDataByName = async name => {
-	const meta = {
-		name:'',
-		poster: '',
-		banner: '',
-		genre: '',
-		imdbRating: 0,
-		description: '',
-		year: 2018,
-		overview: '',
-		thumbnail: 'https://lh3.googleusercontent.com/-wTZicECGczgV7jZnLHtnCqVbCn1a3dVll7fp4uAaJOBuF47Lh97yTR_96odCvpzYCn9VsFUKA=w128-h128-e365'
-	};
-
 	try{
-		const video = await parseVideo(name);
-		const imdb_id = await nameToImdb(video.name);
+		const nameParsed = tnp(name).title;
+		const imdb_id = await nameToImdbId(nameParsed);
 		const metaData = await cinemeta(imdb_id);
-		console.log('metaaaaaaaaaa',  metaData);
-		meta.banner = _.get(metaData, 'background') || _.get(metaData, 'fanart.showbackground[0].url');
-		meta.poster = _.get(metaData, 'background') ||_.get(metaData, 'fanart.showbackground[0].url');
-		meta.genre = _.get(metaData, 'genre') || '';
-		meta.imdbRating = _.get(metaData, 'imdbRating') || '';
-		meta.description = _.get(metaData, 'description') || '';
-		meta.overview = _.get(metaData, 'description') || '';
-		meta.thumbnail = _.get(metaData, 'logo') || meta.thumbnail;
-		meta.year = _.get(metaData, 'year');
-		meta.name = video.name || '';
-		return meta;
+		if (!metaData) {
+			return;
+		}
+		//console.log('meta',  metaData);
+		
+		return {
+			name: nameParsed || name,
+			type: _.get(metaData, 'type') || 'movie',
+			imdbRating: _.get(metaData, 'imdbRating'),
+			year: _.get(metaData, 'year'),
+			genre: _.get(metaData, 'genre'),
+			description: _.get(metaData, 'description'),
+			overview: _.get(metaData, 'description'),
+			cast: _.get(metaData, 'cast'),
+			director: _.get(metaData, 'director') || _.get(metaData, 'writer'),
+			runtime: _.get(metaData, 'runtime'),
+			released: _.get(metaData, 'released'),
+			country: _.get(metaData, 'country'),
+			language: _.get(metaData, 'language'),
+			//episodesInfo: _.get(metaData, 'episodes'),
+			background: _.get(metaData, 'background'),
+			poster: _.get(metaData, 'poster'),
+			logo: _.get(metaData, 'logo'),
+			posterShape: 'contain',
+			logoShape: 'contain',
+			website: _.get(metaData, 'website') || _.get(metaData, 'external.website')
+		};
 	} catch(e) {
 		console.log(`getMetaDataByName ${e.message}`);
-		return meta;
 	}
 };
 
