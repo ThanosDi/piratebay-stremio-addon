@@ -47,20 +47,23 @@ const addon = new Stremio.Server({
 		const query = args.query;
 		try {
 			const {results} = await ptbSearch(query);
-			const response = results.slice(0, 7).map( episode => {
-				const id = `${episode.magnetLink}|||${episode.name}|||S:${episode.seeders}`;
-				const encodedData = new Buffer(id).toString('base64');
-				return {
-					id:`ptb_id:${encodedData}`,
-					ptb_id: `${encodedData}`,
-					video_id: `${episode.name.split('.').join(' ')} , S:${episode.seeders}`,
-					name: `${episode.name.split('.').join(' ')} , S:${episode.seeders}`,
-					poster: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/The_Pirate_Bay_logo.svg/2000px-The_Pirate_Bay_logo.svg.png',
-					posterShape: 'regular',
-					isFree: true,
-					type: 'movie'
-				};
-			});
+			const response = results
+				.filter(torrent => torrent.seeders > 0)
+				.slice(0, 7)
+				.map(torrent => {
+					const id = `${torrent.magnetLink}|||${torrent.name}|||S:${torrent.seeders}`;
+					const encodedData = new Buffer(id).toString('base64');
+					return {
+						id:`ptb_id:${encodedData}`,
+						ptb_id: `${encodedData}`,
+						video_id: `${torrent.name.split('.').join(' ')} , S:${torrent.seeders}`,
+						name: `${torrent.name.split('.').join(' ')} , S:${torrent.seeders}`,
+						poster: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/The_Pirate_Bay_logo.svg/2000px-The_Pirate_Bay_logo.svg.png',
+						posterShape: 'regular',
+						isFree: true,
+						type: 'movie'
+					};
+				});
 			return callback(null, {
 				query,
 				results: response
@@ -76,7 +79,7 @@ const addon = new Stremio.Server({
 		let meta = await getMetaDataByName(query);
 		if (!meta) {
 			const files = await filesStream(magnetLink);
-			meta = await getMetaDataByName(files[0].title);
+			meta = await getMetaDataByName(files[0].title) || {};
 		}
 		meta.id = `ptb_id:${args.query.ptb_id}`;
 		meta.ptb_id = args.query.ptb_id;
