@@ -1,11 +1,13 @@
 const Stremio = require('stremio-addons');
 const magnet = require('magnet-uri');
 const videoExtensions = require('video-extensions');
+const db = require('monk')(process.env.MONGO_URI);
 const {
 	imdbIdToName,
 	torrentStreamEngine,
 	getMetaDataByName,
-	ptbSearch
+	ptbSearch,
+	initMongo
 } = require('./tools');
 
 const manifest = {
@@ -46,8 +48,8 @@ const addon = new Stremio.Server({
 	'meta.search': async (args, callback) => {
 		const query = args.query;
 		try {
-			const {results} = await ptbSearch(query);
-			const response = results.slice(0, 4).map( episode => {
+			const results = await ptbSearch(query);
+			const response = results.map( episode => {
 				const id = `${episode.magnetLink}|||${episode.name}|||S:${episode.seeders}`;
 				const encodedData = new Buffer(id).toString('base64');
 				return {
@@ -115,17 +117,17 @@ const addon = new Stremio.Server({
 					file.title = file.title.split('.').join(' ');
 					return file;
 				});
+
 			return callback(null, results);
 		}
 		/* Handle non ptb_id results*/
 		const title = await createTitle(args);
 		try {
-			const {results} = await ptbSearch(title, args.query.type);
-			const resolve = results.slice(0, 4).map( episode => {
+			const results = await ptbSearch(title);
+			const resolve = results.map( episode => {
 				const {infoHash, announce } = magnet.decode(episode.magnetLink);
 				const availability = episode.seeders == 0 ? 0 : episode.seeders < 5 ? 1 : 2;
-				const detail = `${episode.name}
-👤 ${episode.seeders}`;
+				const detail = `${episode.name}\n👤 ${episode.seeders}`;
 				return {
 					infoHash,
 					name: 'PTB',
@@ -134,9 +136,7 @@ const addon = new Stremio.Server({
 				};
 			});
 			return callback(null, resolve);
-		} catch (e) {
-			console.log('ptbsearch error:', e.message);
-		}
+		} catch (e) {}
 	},
 }, manifest);
 
@@ -169,9 +169,12 @@ const createTitle = async args => {
 };
 
 const server = require('http').createServer((req, res) => {
-	addon.middleware(req, res, function() { res.end() }); // wire the middleware - also compatible with connect / express
+	addon.middleware(req, res, async function() {
+		return res.end()
+	}); // wire the middleware - also compatible with connect / express
 })
-	.on('listening', () => {
+	.on('listening', async () => {
+		await initMongo(db);
 		console.log(`Piratebay Stremio Addon listening on ${server.address().port}`);
 	})
 	.listen(process.env.PORT || 7000);
