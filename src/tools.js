@@ -4,6 +4,14 @@ const torrentStream = require('torrent-stream');
 const parseVideo = require('video-name-parser');
 const _ = require('lodash');
 const PirateBay = require('thepiratebay');
+const { isEmpty, not, pipe, pathOr } = require('ramda');
+const ONE_DAY = 86400;
+let cache;
+
+const initMongo = async db => {
+	await db.get('cache').ensureIndex({ createdAt: 1 }, { expireAfterSeconds: ONE_DAY });
+	cache = await db.get('cache')
+};
 
 const nameToImdb = name => {
 	return new Promise((resolve, rejected) => {
@@ -31,10 +39,15 @@ const cinemeta = imdb_id => {
 	});
 };
 
-
-const imdbIdToName = async imdbId => {
-	const i = new imdb();
-	return await i.getMovie(imdbId);
+const imdbIdToName = imdbId => {
+	return new Promise(function (resolve, reject) {
+		imdb(imdbId, function(err, data) {
+			if(err){
+				rejected( new Error(err.message));
+			}
+			resolve(data);
+		});
+	});
 };
 
 const torrentStreamEngine = magnetLink => {
@@ -47,7 +60,6 @@ const torrentStreamEngine = magnetLink => {
 		});
 	});
 };
-
 
 const getMetaDataByName = async name => {
 	const meta = {
@@ -66,7 +78,7 @@ const getMetaDataByName = async name => {
 		const video = await parseVideo(name);
 		const imdb_id = await nameToImdb(video.name);
 		const metaData = await cinemeta(imdb_id);
-		console.log('metaaaaaaaaaa',  metaData);
+
 		meta.banner = _.get(metaData, 'background') || _.get(metaData, 'fanart.showbackground[0].url');
 		meta.poster = _.get(metaData, 'background') ||_.get(metaData, 'fanart.showbackground[0].url');
 		meta.genre = _.get(metaData, 'genre') || '';
@@ -83,17 +95,37 @@ const getMetaDataByName = async name => {
 	}
 };
 
+const isFull = pipe(
+	pathOr([], ['results']),
+	isEmpty,
+	not
+);
+
 const ptbSearch = async query => {
-	return await PirateBay.search(query, {
+	const cachedResults = await cache.findOne({id: query}, { 'fields': { '_id': 0, 'results': 1  }});
+
+	if (isFull(cachedResults)) return pathOr([], ['results'], cachedResults);
+	const ptbResults = await PirateBay.search(query, {
 		orderBy: 'seeds',
 		sortBy: 'desc',
 		category: 'video'
 	});
+
+	const results = await cache.findOneAndUpdate(
+		{id: query},
+		{id: query,
+			createdAt: new Date(),
+			results: pathOr([], ['results'], ptbResults).slice(0, 4)},
+		{returnNewDocument: true, upsert: true}
+		);
+
+	return pathOr([], ['results'], results);
 };
 
 module.exports = {
 	imdbIdToName,
 	torrentStreamEngine,
 	getMetaDataByName,
-	ptbSearch
+	ptbSearch,
+	initMongo
 };
