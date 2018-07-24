@@ -32,9 +32,15 @@ const cinemeta = imdb_id => {
 	});
 };
 
-const imdbIdToName = async imdbId => {
-	const i = new imdb();
-	return await i.getMovie(imdbId);
+const imdbIdToName = imdbId => {
+	return new Promise(function (resolve, reject) {
+		imdb(imdbId, function(err, data) {
+			if(err){
+				rejected( new Error(err.message));
+			}
+			resolve(data);
+		});
+	});
 };
 
 const torrentStreamEngine = magnetLink => {
