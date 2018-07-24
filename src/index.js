@@ -111,10 +111,10 @@ const addon = new Stremio.Server({
 			if (args.query.type === 'series') {
 				torrents = []
 					.concat(results[0].results
-						.filter(result => titleInfo.nameMatcher.test(result.name.split('.').join(' ').replace(/[\':]/g, '')))
+						.filter(result => titleInfo.nameMatcher.test(result.name.toLowerCase().replace(/[^0-9a-z ]/gi, ' ')))
 						.slice(0, 4))
 					.concat(results[1].results
-						.filter(result => titleInfo.nameMatcher.test(result.name.split('.').join(' ').replace(/[\':]/g, '')))
+						.filter(result => titleInfo.nameMatcher.test(result.name.toLowerCase().replace(/[^0-9a-z ]/gi, ' ')))
 						.slice(0, 4))
 					.concat(results[2].results.slice(0, 4));
 			} else {
@@ -182,7 +182,7 @@ const createTitle = async args => {
 			try {
 				const data = await imdbIdToName(args.query.imdb_id);
 				let seriesTitle = (!data.originalTitle || data.originalTitle === 'N/A') ? data.title : data.originalTitle;
-				seriesTitle = seriesTitle.toLowerCase().replace(/[^0-9a-z_ ]/gi, ''); // to lowercase and remove all non-alphanumeric chars
+				seriesTitle = seriesTitle.toLowerCase().replace(/[^0-9a-z ]/gi, ' '); // to lowercase and remove all non-alphanumeric chars
 
 				const seasonNum = parseInt(args.query.season);
 				const episodeNum = parseInt(args.query.episode);
