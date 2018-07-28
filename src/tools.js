@@ -9,7 +9,7 @@ const ONE_DAY = 86400;
 let cache;
 
 const initMongo = async db => {
-	await db.get('cache').ensureIndex({ createdAt: 1 }, { expireAfterSeconds: ONE_DAY });
+	await db.get('cache').ensureIndex({ createdAt: 1, id: 1 }, { expireAfterSeconds: ONE_DAY });
 	cache = await db.get('cache')
 };
 
@@ -90,7 +90,6 @@ const getMetaDataByName = async name => {
 		meta.name = video.name || '';
 		return meta;
 	} catch(e) {
-		console.log(`getMetaDataByName ${e.message}`);
 		return meta;
 	}
 };
