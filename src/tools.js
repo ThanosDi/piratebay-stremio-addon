@@ -43,7 +43,7 @@ const imdbIdToName = imdbId => {
 	return new Promise(function (resolve, reject) {
 		imdb(imdbId, function(err, data) {
 			if(err){
-				rejected( new Error(err.message));
+				reject( new Error(err.message));
 			}
 			resolve(data);
 		});
