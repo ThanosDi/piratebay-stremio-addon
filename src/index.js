@@ -46,7 +46,7 @@ const addon = new Stremio.Server({
 	'meta.search': async (args, callback) => {
 		const query = args.query;
 		try {
-			const {results} = await ptbSearch(query);
+			const results = await ptbSearch(query);
 			const response = results
 				.filter(torrent => torrent.seeders > 0)
 				.slice(0, 7)
@@ -110,15 +110,15 @@ const addon = new Stremio.Server({
 			let torrents = [];
 			if (args.query.type === 'series') {
 				torrents = []
-					.concat(results[0].results
+					.concat(results[0]
 						.filter(result => titleInfo.nameMatcher.test(result.name.toLowerCase().replace(/[^0-9a-z ]/gi, ' ')))
 						.slice(0, 4))
-					.concat(results[1].results
+					.concat(results[1]
 						.filter(result => titleInfo.nameMatcher.test(result.name.toLowerCase().replace(/[^0-9a-z ]/gi, ' ')))
 						.slice(0, 4))
-					.concat(results[2].results.slice(0, 4));
+					.concat(results[2].slice(0, 4));
 			} else {
-				torrents = results[0].results.slice(0, 4);
+				torrents = results[0].slice(0, 4);
 			}
 
 			console.log('torrents:', torrents.map(torrent => torrent.name));
@@ -137,7 +137,7 @@ const addon = new Stremio.Server({
 						title: detail,
 						availability
 					};
-				});
+				}).filter(torrent => torrent.infoHash);
 			return callback(null, resolve);
 		}).catch((error) => {
 	    	console.error(error);
