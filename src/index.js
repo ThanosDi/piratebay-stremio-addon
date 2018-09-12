@@ -1,6 +1,5 @@
 const Stremio = require('stremio-addons');
 const magnet = require('magnet-uri');
-const videoExtensions = require('video-extensions');
 const db = require('monk')(process.env.MONGO_URI);
 const {
 	imdbIdToName,
@@ -45,81 +44,7 @@ const manifestLocal = {
 };
 
 const addon = new Stremio.Server({
-	'meta.search': async (args, callback) => {
-		const query = args.query;
-		try {
-			const results = await ptbSearch(query);
-			const response = results.map( episode => {
-				const id = `${episode.magnetLink}|||${episode.name}|||S:${episode.seeders}`;
-				const encodedData = new Buffer(id).toString('base64');
-				return {
-					id:`ptb_id:${encodedData}`,
-					ptb_id: `${encodedData}`,
-					video_id: `${episode.name.split('.').join(' ')} , S:${episode.seeders}`,
-					name: `${episode.name.split('.').join(' ')} , S:${episode.seeders}`,
-					poster: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/The_Pirate_Bay_logo.svg/2000px-The_Pirate_Bay_logo.svg.png',
-					posterShape: 'regular',
-					isFree: true,
-					type: 'movie'
-				};
-			});
-			return callback(null, {
-				query,
-				results: response
-			});
-		} catch (e) {
-			console.log('e.message', e.message);
-		}
-	},
-	'meta.get': async function(args, callback, user) {
-		const decodedData = new Buffer(args.query.ptb_id, 'base64').toString('ascii');
-		const [magnetLink, query, seeders] = decodedData.split('|||');
-
-		const meta = await getMetaDataByName(query);
-		const response = {
-			id:`ptb_id:${args.query.ptb_id}`,
-			ptb_id: args.query.ptb_id,
-			name: `${meta.name || query.split('.').join(' ')} `,
-			poster: meta.poster,
-			posterShape: 'regular',
-			banner: meta.banner,
-			genre: meta.genre,
-			isFree: 1,
-			imdbRating: meta.imdbRating,
-			type: 'movie',
-			year:meta.year,
-			description: meta.description,
-		};
-
-		callback(null, response);
-	},
 	'stream.find': async (args, callback) => {
-		/* Handle search results with ptb_id */
-		if (args.query.type === 'movie' && args.query.ptb_id) {
-			const decodedData = new Buffer(args.query.ptb_id, 'base64').toString('ascii');
-
-			const [magnetLink, query, seeders] = decodedData.split('|||');
-
-			const {files, infoHash} = await torrentStreamEngine(magnetLink);
-			const availability = seeders == 0 ? 0 : seeders < 5 ? 1 : 2;
-			const results = files
-				.map((file, fileIdx) => {
-					return {
-						infoHash,
-						fileIdx,
-						name: 'PTB',
-						availability,
-						title: file.name
-					}
-				})
-				.filter(file => videoExtensions.indexOf(file.title.split('.').pop()) !== -1)
-				.map(file => {
-					file.title = file.title.split('.').join(' ');
-					return file;
-				});
-
-			return callback(null, results);
-		}
 		/* Handle non ptb_id results*/
 		const title = await createTitle(args);
 		try {
