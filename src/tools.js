@@ -107,7 +107,8 @@ const ptbSearch = async query => {
 	const ptbResults = await PirateBay.search(query, {
 		orderBy: 'seeds',
 		sortBy: 'desc',
-		category: 'video'
+		category: 'video',
+		proxyList: ['https://thepiratebay.org', 'https://pirateproxy.sh']
 	});
 
 	const results = await cache.findOneAndUpdate(
