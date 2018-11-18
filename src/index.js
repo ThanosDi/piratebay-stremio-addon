@@ -3,8 +3,6 @@ const magnet = require('magnet-uri');
 const db = require('monk')(process.env.MONGO_URI);
 const {
 	imdbIdToName,
-	torrentStreamEngine,
-	getMetaDataByName,
 	ptbSearch,
 	initMongo
 } = require('./tools');
@@ -71,12 +69,12 @@ const addon = new Stremio.Server({
  */
 const createTitle = async args => {
 	let title = args.query.imdb_id || args.query.id;
+	const data = await imdbIdToName(args.query.imdb_id);
+	const movieTitle = (!data.originalTitle || data.originalTitle === 'N/A') ? data.title : data.originalTitle;
+
 	switch (args.query.type) {
 		case 'series':
 			try {
-				const data = await imdbIdToName(args.query.imdb_id);
-				const movieTitle = (!data.originalTitle || data.originalTitle === 'N/A') ? data.title : data.originalTitle;
-
 				let season = args.query.season;
 				let episode = args.query.episode;
 
@@ -89,7 +87,7 @@ const createTitle = async args => {
 				return new Error(e.message);
 			}
 		case 'movie':
-			return title;
+			return movieTitle;
 	}
 };
 
