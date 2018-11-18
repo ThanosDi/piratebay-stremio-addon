@@ -101,7 +101,6 @@ const isFull = pipe(
 );
 
 const ptbSearch = async query => {
-	console.log(query);
 	const cachedResults = await cache.findOne({id: query}, { 'fields': { '_id': 0, 'results': 1  }});
 
 	if (isFull(cachedResults)) return pathOr([], ['results'], cachedResults);
@@ -119,7 +118,6 @@ const ptbSearch = async query => {
 			results: pathOr([], ['results'], ptbResults).slice(0, 4)},
 		{returnNewDocument: true, upsert: true}
 		);
-	console.log(results);
 
 	return pathOr([], ['results'], results);
 };
