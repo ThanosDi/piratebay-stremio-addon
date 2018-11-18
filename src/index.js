@@ -3,8 +3,6 @@ const magnet = require('magnet-uri');
 const db = require('monk')(process.env.MONGO_URI);
 const {
 	imdbIdToName,
-	torrentStreamEngine,
-	getMetaDataByName,
 	ptbSearch,
 	initMongo
 } = require('./tools');
@@ -14,8 +12,8 @@ const manifest = {
 	'version': '1.3.0',
 	'name': 'PirateBay Addon',
 	'description': 'Fetch PirateBay entries on a single episode or series.',
-	'icon': 'https://static.wareziens.net/wp-content/image.php?url=http://www.turbopix.fr/up/1326291999.png',
-	'logo': 'https://static.wareziens.net/wp-content/image.php?url=http://www.turbopix.fr/up/1326291999.png',
+	'icon': 'https://d2.alternativeto.net/dist/icons/thepiratebay_60782.png?width=128&height=128&mode=crop&upscale=false',
+	'logo': 'https://d2.alternativeto.net/dist/icons/thepiratebay_60782.png?width=128&height=128&mode=crop&upscale=false',
 	'isFree': true,
 	'email': 'thanosdi@live.com',
 	'endpoint': 'https://piratebay-stremio-addon.herokuapp.com/stremio/v1',
@@ -28,11 +26,11 @@ const manifest = {
 
 const manifestLocal = {
 	'id': 'org.stremio.piratebay.local',
-	'version': '1.3.0',
+	'version': '1.3.0.local',
 	'name': 'PirateBay Addon local',
 	'description': 'Fetch PirateBay entries on a single episode or series. local',
-	'icon': 'https://static.wareziens.net/wp-content/image.php?url=http://www.turbopix.fr/up/1326291999.png',
-	'logo': 'https://static.wareziens.net/wp-content/image.php?url=http://www.turbopix.fr/up/1326291999.png',
+	'icon': 'https://d2.alternativeto.net/dist/icons/thepiratebay_60782.png?width=128&height=128&mode=crop&upscale=false',
+	'logo': 'https://d2.alternativeto.net/dist/icons/thepiratebay_60782.png?width=128&height=128&mode=crop&upscale=false',
 	'isFree': true,
 	'email': 'thanosdi@live.com',
 	'endpoint': 'http://localhost:7000/stremioget/stremio/v1',
@@ -71,12 +69,12 @@ const addon = new Stremio.Server({
  */
 const createTitle = async args => {
 	let title = args.query.imdb_id || args.query.id;
+	const data = await imdbIdToName(args.query.imdb_id);
+	const movieTitle = (!data.originalTitle || data.originalTitle === 'N/A') ? data.title : data.originalTitle;
+
 	switch (args.query.type) {
 		case 'series':
 			try {
-				const data = await imdbIdToName(args.query.imdb_id);
-				const movieTitle = (!data.originalTitle || data.originalTitle === 'N/A') ? data.title : data.originalTitle;
-
 				let season = args.query.season;
 				let episode = args.query.episode;
 
@@ -89,7 +87,7 @@ const createTitle = async args => {
 				return new Error(e.message);
 			}
 		case 'movie':
-			return title;
+			return movieTitle;
 	}
 };
 
