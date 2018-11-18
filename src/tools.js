@@ -108,7 +108,7 @@ const ptbSearch = async query => {
 		orderBy: 'seeds',
 		sortBy: 'desc',
 		category: 'video',
-		proxyList: ['https://thepiratebay.org', 'https://pirateproxy.sh']
+		proxyList: ['https://thepiratebay.rocks', 'https://pirateproxy.gdn', 'https://pirateproxy.live', 'https://thehiddenbay.com']
 	});
 
 	const results = await cache.findOneAndUpdate(
