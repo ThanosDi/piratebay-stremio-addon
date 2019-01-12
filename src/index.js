@@ -1,10 +1,10 @@
 const Stremio = require('stremio-addons');
 const magnet = require('magnet-uri');
 const videoExtensions = require('video-extensions');
+const _ = require('lodash');
 const {
 	imdbIdToName,
 	torrentStreamEngine,
-	getMetaDataByName,
 	ptbSearch
 } = require('./tools');
 
@@ -43,183 +43,166 @@ const manifestLocal = {
 };
 
 const addon = new Stremio.Server({
-	'meta.search': async (args, callback) => {
-		const query = args.query;
-		try {
-			const results = await ptbSearch(query);
-			const response = results
-				.filter(torrent => torrent.seeders > 0)
-				.slice(0, 7)
-				.map(torrent => {
-					const id = `${torrent.magnetLink}|||${torrent.name}|||S:${torrent.seeders}`;
-					const encodedData = new Buffer(id).toString('base64');
-					return {
-						id:`ptb_id:${encodedData}`,
-						ptb_id: `${encodedData}`,
-						video_id: `${torrent.name.split('.').join(' ')} , S:${torrent.seeders}`,
-						name: `${torrent.name.split('.').join(' ')} , S:${torrent.seeders}`,
-						poster: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/The_Pirate_Bay_logo.svg/2000px-The_Pirate_Bay_logo.svg.png',
-						posterShape: 'regular',
-						isFree: true,
-						type: 'movie'
-					};
-				});
-			return callback(null, {
-				query,
-				results: response
-			});
-		} catch (e) {
-			console.log('e.message', e.message);
-		}
-	},
-	'meta.get': async function(args, callback, user) {
-		const decodedData = new Buffer(args.query.ptb_id, 'base64').toString('ascii');
-		const [magnetLink, query, seeders] = decodedData.split('|||');
-
-		let meta = await getMetaDataByName(query);
-		if (!meta) {
-			const files = await filesStream(magnetLink);
-			meta = await getMetaDataByName(files[0].title) || {};
-		}
-		meta.id = `ptb_id:${args.query.ptb_id}`;
-		meta.ptb_id = args.query.ptb_id;
-		meta.type = 'movie';
-		meta.name = query;
-
-		return callback(null, meta);
-	},
 	'stream.find': async (args, callback) => {
-		/* Handle search results with ptb_id */
-		if (args.query.ptb_id) {
-			const decodedData = new Buffer(args.query.ptb_id, 'base64').toString('ascii');
-			const [magnetLink, query, seeders] = decodedData.split('|||');
-
-			const results = await filesStream(magnetLink, seeders);
-			return callback(null, results);
-		}
-		/* Handle non ptb_id results*/
-		const titleInfo = await createTitle(args);
-		const promises = [ptbSearch(titleInfo.title, args.query.type)];
 		if (args.query.type === 'series') {
-			promises.push(ptbSearch(titleInfo.seriesTitle, args.query.type));
-			promises.push(ptbSearch(titleInfo.episodeTitle, args.query.type));
-		}
-		Promise.all(
-			promises
-		).then(results => {
-			let torrents = [];
-			if (args.query.type === 'series') {
-				torrents = []
-					.concat(results[0]
-						.filter(result => titleInfo.nameMatcher.test(result.name.toLowerCase().replace(/[^0-9a-z ]/gi, ' ')))
+			const seriesInfo = await seriesInformation(args);
+			console.log(seriesInfo.episodeTitle);
+
+			Promise.all([
+					ptbSearch(seriesInfo.imdb),
+					ptbSearch(seriesInfo.seriesTitle),
+					ptbSearch(seriesInfo.episodeTitle)
+			]).then(results => {
+				let torrents = []
+					.concat(results[0].results
+						.filter(result => seriesInfo.nameMatcher.test(escapeTitle(result.name)))
 						.slice(0, 4))
-					.concat(results[1]
-						.filter(result => titleInfo.nameMatcher.test(result.name.toLowerCase().replace(/[^0-9a-z ]/gi, ' ')))
+					.concat(results[1].results
+						.filter(result => seriesInfo.nameMatcher.test(escapeTitle(result.name)))
 						.slice(0, 4))
-					.concat(results[2].slice(0, 4));
-			} else {
-				torrents = results[0].slice(0, 4);
+					.concat(results[2].results.slice(0, 4));
+
+				const openedTorrents = _.uniqBy(torrents, 'magnetLink')
+					.filter(torrent => torrent.seeders > 0)
+					.sort((a, b) => b.seeders - a.seeders)
+					.map(async torrent => {
+						return await openFiles(torrent);
+					});
+
+				Promise.all(openedTorrents).then(torrents => {
+					console.log('opened torrents: ', torrents.map(torrent => torrent.name));
+
+					const streams = torrents
+						.map(torrent => findEpisode(torrent, seriesInfo.episodeMatcher))
+						.filter(torrent => torrent.episode)
+						.map(torrent => {
+								const { infoHash } = magnet.decode(torrent.magnetLink);
+								const availability = torrent.seeders < 5 ? 1 : 2;
+								const title = `${torrent.name.replace(/,/g, ' ')}\n${torrent.episode.fileName}\n👤 ${torrent.seeders}`;
+
+								return {
+									infoHash: infoHash,
+									fileIdx: torrent.episode.fileId,
+									name: 'TPB',
+									title: title,
+									availability: availability
+								};
+							})
+							.filter(stream => stream.infoHash);
+					console.log('streams: ', streams.map(stream => stream.title));
+					return callback(null, streams);
+				}).catch((error) => callback(new Error(error.message)));
+			}).catch((error) => callback(new Error(error.message)));
+		} else {
+			try {
+				const {results} = await ptbSearch(args.query.imdb_id);
+
+				return callback(null, results
+					.filter(torrent => torrent.seeders > 0)
+					.sort((a, b) => b.seeders - a.seeders)
+					.slice(0, 5)
+					.map(torrent => {
+						const {infoHash} = magnet.decode(torrent.magnetLink);
+						const availability = torrent.seeders < 5 ? 1 : 2;
+						const detail = `${torrent.name}\n👤 ${torrent.seeders}`;
+						return {
+							infoHash,
+							name: 'TPB',
+							title: detail,
+							availability
+						};
+					}));
+			} catch (error) {
+				return callback(new Error(error.message))
 			}
-
-			console.log('torrents:', torrents.map(torrent => torrent.name));
-
-			const resolve = torrents
-				.filter(torrent => torrent.seeders > 0)
-				.sort((a, b) => b.seeders - a.seeders)
-				.map(torrent => {
-					const { infoHash, announce } = magnet.decode(torrent.magnetLink);
-					const availability = torrent.seeders == 0 ? 0 : torrent.seeders < 5 ? 1 : 2;
-					const detail = `${torrent.name.replace(/,/g, ' ')}\n👤 ${torrent.seeders}`;
-
-					return {
-						infoHash,
-						name: 'PTB',
-						title: detail,
-						availability
-					};
-				}).filter(torrent => torrent.infoHash);
-			return callback(null, resolve);
-		}).catch((error) => {
-	    	console.error(error);
-	   	 	return callback(new Error('ptbsearch error:', error.message));
-	  	});
-
+		}
 	},
 }, manifest);
 
 /*
- * Reads torrent and maps all video files to Stream object
+ * Reads torrent files and tries to find a matched series episode.
  */
-const filesStream = async (magnetLink, seeders = 5) => {
+const findEpisode = (torrent, episodeMatcher) => {
 	try {
-		const availability = seeders == 0 ? 0 : seeders < 5 ? 1 : 2;
-		const { files, infoHash } = await torrentStreamEngine(magnetLink);
-
-		return files
-			.map((file, fileIdx) => {
+		torrent.episode = torrent.files
+			.map((file, fileId) => {
 				return {
-					infoHash,
-					fileIdx,
-					name: 'PTB',
-					availability,
-					title: file.name
+					fileName: file.name,
+					fileId: fileId,
+					fileSize: file.length
 				}
 			})
-			.filter(file => videoExtensions.indexOf(file.title.split('.').pop()) !== -1);
+			.filter(file => videoExtensions.indexOf(file.fileName.split('.').pop()) !== -1)
+			.sort((a, b) => b.fileSize - a.fileSize)
+			.find(file => episodeMatcher.test(file.fileName));
+		return torrent;
 	} catch (e) {
 		return new Error(e.message);
 	}
-}
+};
 
-/*  Construct title based on movie or series
- *  If series get title name by imdb_id and append season and episode
- *  @return {String} title
+/*
+ * Append torrent files to the object.
  */
-const createTitle = async args => {
-	let title = args.query.imdb_id || args.query.id;
-	switch (args.query.type) {
-		case 'series':
-			try {
-				const data = await imdbIdToName(args.query.imdb_id);
-				let seriesTitle = (!data.originalTitle || data.originalTitle === 'N/A') ? data.title : data.originalTitle;
-				seriesTitle = seriesTitle.toLowerCase().replace(/[^0-9a-z ]/gi, ' '); // to lowercase and remove all non-alphanumeric chars
-
-				const seasonNum = parseInt(args.query.season);
-				const episodeNum = parseInt(args.query.episode);
-
-				const season = seasonNum < 10 ? `0${seasonNum}` : `${seasonNum}`;
-				const episode = episodeNum < 10 ? `0${episodeNum}` : `${episodeNum}`;
-
-				return {
-					title: title,
-					seriesTitle: seriesTitle,
-					episodeTitle:`${seriesTitle} s${season}e${episode}`,
-					nameMatcher: new RegExp(
-						`\\b${seriesTitle}\\b.*` + // match series title folowed by any characters
-							`(` + // start capturing second condition
-								// first variation
-								`\\bseasons?\\b[^a-zA-Z]*` + // contains 'season'/'seasons' followed by non-alphabetic characters
-									`(` + // start capturing sub condition
-										`\\bs?0?${seasonNum}\\b` + // followed by season number ex:'4'/'04'/'s04'/'1,2,3,4'/'1 2 3 4'
-										`|\\b[01]?\\d\\b[^a-zA-Z]*-[^a-zA-Z]*\\b[01]?\\d\\b` + // or followed by season range '1-4'/'01-04'/'1-12'
-									`)` + // finish capturing subcondition
-								// second variation
-								`|\\bs${season}\\b` + // or constains only season indentifier 's04'/'s12'
-								// third variation
-								`|\\bs[01]?\\d\\b[^a-zA-Z]*-[^a-zA-Z]*\\bs[01]?\\d\\b` + // or contains season range 's01 - s04'/'s01.-.s04'/'s1-s12'
-								// fourth variation
-								`|((\\bcomplete|all|full\\b).*(\\bseries|seasons\\b))` + // or contains any two word variation from (complete,all,full)+(series,seasons)
-							`)` // finish capturing second condition
-					, 'i') // case insensitive matcher
-				};
-			} catch (e) {
-				return new Error(e.message);
-			}
-		case 'movie':
-			return {
-				title: title
-			}
+const openFiles = async torrent => {
+	try {
+		const { files } = await torrentStreamEngine(torrent.magnetLink);
+		torrent.files = files;
+		return torrent;
+	} catch (e) {
+		console.log(e);
 	}
+};
+
+/*
+ * Construct series info based on imdb_id
+ */
+const seriesInformation = async args => {
+	try {
+		const data = await imdbIdToName(args.query.imdb_id);
+		let seriesTitle = (!data.originalTitle || data.originalTitle === 'N/A') ? data.title : data.originalTitle;
+		seriesTitle = escapeTitle(seriesTitle);
+
+		const seasonNum = parseInt(args.query.season);
+		const episodeNum = parseInt(args.query.episode);
+
+		const season = seasonNum < 10 ? `0${seasonNum}` : `${seasonNum}`;
+		const episode = episodeNum < 10 ? `0${episodeNum}` : `${episodeNum}`;
+
+		return {
+			imdb: args.query.imdb_id,
+			seriesTitle: seriesTitle,
+			episodeTitle:`${seriesTitle} s${season}e${episode}`,
+			nameMatcher: new RegExp(
+				`\\b${seriesTitle}\\b.*` + // match series title followed by any characters
+					`(` + // start capturing second condition
+						// first variation
+						`\\bseasons?\\b[^a-zA-Z]*` + // contains 'season'/'seasons' followed by non-alphabetic characters
+							`(` + // start capturing sub condition
+								`\\bs?0?${seasonNum}\\b` + // followed by season number ex:'4'/'04'/'s04'/'1,2,3,4'/'1 2 3 4'
+								`|\\b[01]?\\d\\b[^a-zA-Z]*-[^a-zA-Z]*\\b[01]?\\d\\b` + // or followed by season range '1-4'/'01-04'/'1-12'
+							`)` + // finish capturing subcondition
+						// second variation
+						`|\\bs${season}\\b` + // or constrains only season identifier 's04'/'s12'
+						// third variation
+						`|\\bs[01]?\\d\\b[^a-zA-Z]*-[^a-zA-Z]*\\bs[01]?\\d\\b` + // or contains season range 's01 - s04'/'s01.-.s04'/'s1-s12'
+						// fourth variation
+						`|((\\bcomplete|all|full\\b).*(\\bseries|seasons\\b))` + // or contains any two word variation from (complete,all,full)+(series,seasons)
+					`)` // finish capturing second condition
+			, 'i'), // case insensitive matcher
+			episodeMatcher: new RegExp(
+					`\\bs?0?${seasonNum}.*(x|ep?)?${episode}\\b`// match episode naming cases S01E01/1x01/S1.EP01..
+					, 'i') // case insensitive matcher
+		};
+	} catch (e) {
+		return new Error(e.message);
+	}
+};
+
+const escapeTitle = title => {
+	return title.toLowerCase()
+		.replace('\'', '') // remove apostrophe
+		.replace(/[^0-9a-z ]/gi, ' '); // to lowercase and remove all non-alphanumeric chars
 };
 
 const server = require('http').createServer((req, res) => {

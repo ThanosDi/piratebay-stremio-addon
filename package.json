@@ -17,12 +17,12 @@
     "imdb": "https://github.com/ThanosDi/imdb.git",
     "lodash": "^4.17.5",
     "magnet-uri": "^5.1.7",
-    "name-to-imdb": "^2.0.1",
+    "name-to-imdb": "^2.2.0",
     "stremio-addons": "^2.8.13",
-    "thepiratebay": "^1.4.7",
-    "torrent-stream": "^1.0.3",
+    "thepiratebay": "https://github.com/jaruba/thepiratebay/tarball/master",
+    "torrent-name-parser": "^0.6.5",
+    "torrent-stream": "^1.1.0",
     "video-extensions": "^1.1.0",
-    "video-name-parser": "^1.4.6",
-    "torrent-name-parser": "^0.6.5"
+    "video-name-parser": "^1.4.6"
   }
 }
