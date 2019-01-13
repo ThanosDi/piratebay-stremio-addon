@@ -24,16 +24,31 @@ const torrentStreamEngine = magnetLink => {
 			connections: 30
 		});
 		engine.ready(() => {
-			resolve(engine);
+			const files = engine.files;
+			engine.destroy();
+			resolve(files);
 		});
+		setTimeout(() => {
+			engine.destroy();
+			rejected(new Error("No available connections for torrent!"));
+		}, 3000);
 	});
 };
 
-const ptbSearch = async query => {
+const ptbSearch = async query=> {
 	return await PirateBay.search(query, {
 		orderBy: 'seeds',
 		sortBy: 'desc',
-		category: 'video'
+		category: 'video',
+		proxyList: ['https://pirateproxy.sh', 'https://pirateproxy.gdn']
+	})
+	.then(results => {
+		console.log("piratebay results: ", results.results.length);
+		return results.results;
+	})
+	.catch(err => {
+		console.log(`failed \"${query}\" query.`);
+		return [];
 	});
 };
 

@@ -53,27 +53,19 @@ const addon = new Stremio.Server({
 					ptbSearch(seriesInfo.seriesTitle),
 					ptbSearch(seriesInfo.episodeTitle)
 			]).then(results => {
-				let torrents = []
-					.concat(results[0].results
-						.filter(result => seriesInfo.nameMatcher.test(escapeTitle(result.name)))
-						.slice(0, 4))
-					.concat(results[1].results
-						.filter(result => seriesInfo.nameMatcher.test(escapeTitle(result.name)))
-						.slice(0, 4))
-					.concat(results[2].results.slice(0, 4));
-
-				const openedTorrents = _.uniqBy(torrents, 'magnetLink')
+				const torrents = _.uniqBy(_.flatten(results), 'magnetLink')
 					.filter(torrent => torrent.seeders > 0)
+					.filter(torrent => seriesInfo.matches(escapeTitle(torrent.name)))
 					.sort((a, b) => b.seeders - a.seeders)
-					.map(async torrent => {
-						return await openFiles(torrent);
-					});
+					.slice(0, 5);
 
-				Promise.all(openedTorrents).then(torrents => {
+				Promise.all(torrents.map(async torrent => await openFiles(torrent)))
+				.then(torrents => {
 					console.log('opened torrents: ', torrents.map(torrent => torrent.name));
 
 					const streams = torrents
-						.map(torrent => findEpisode(torrent, seriesInfo.episodeMatcher))
+						.filter(torrent => torrent.files)
+						.map(torrent => findEpisode(torrent, seriesInfo))
 						.filter(torrent => torrent.episode)
 						.map(torrent => {
 								const { infoHash } = magnet.decode(torrent.magnetLink);
@@ -91,11 +83,17 @@ const addon = new Stremio.Server({
 							.filter(stream => stream.infoHash);
 					console.log('streams: ', streams.map(stream => stream.title));
 					return callback(null, streams);
-				}).catch((error) => callback(new Error(error.message)));
-			}).catch((error) => callback(new Error(error.message)));
+				}).catch((error) => {
+					console.log(error);
+					return callback(new Error(error.message))
+				});
+			}).catch((error) => {
+				console.log(error);
+				return callback(new Error(error.message))
+			});
 		} else {
 			try {
-				const {results} = await ptbSearch(args.query.imdb_id);
+				const results = await ptbSearch(args.query.imdb_id);
 
 				return callback(null, results
 					.filter(torrent => torrent.seeders > 0)
@@ -122,7 +120,7 @@ const addon = new Stremio.Server({
 /*
  * Reads torrent files and tries to find a matched series episode.
  */
-const findEpisode = (torrent, episodeMatcher) => {
+const findEpisode = (torrent, seriesInfo) => {
 	try {
 		torrent.episode = torrent.files
 			.map((file, fileId) => {
@@ -134,10 +132,11 @@ const findEpisode = (torrent, episodeMatcher) => {
 			})
 			.filter(file => videoExtensions.indexOf(file.fileName.split('.').pop()) !== -1)
 			.sort((a, b) => b.fileSize - a.fileSize)
-			.find(file => episodeMatcher.test(file.fileName));
+			.find(file => seriesInfo.matchesEpisode(file.fileName));
 		return torrent;
 	} catch (e) {
-		return new Error(e.message);
+		console.log(e);
+		return torrent;
 	}
 };
 
@@ -146,11 +145,11 @@ const findEpisode = (torrent, episodeMatcher) => {
  */
 const openFiles = async torrent => {
 	try {
-		const { files } = await torrentStreamEngine(torrent.magnetLink);
-		torrent.files = files;
+		torrent.files = await torrentStreamEngine(torrent.magnetLink);
 		return torrent;
 	} catch (e) {
-		console.log(e);
+		console.log("failed opening:", torrent.name);
+		return torrent;
 	}
 };
 
@@ -169,7 +168,7 @@ const seriesInformation = async args => {
 		const season = seasonNum < 10 ? `0${seasonNum}` : `${seasonNum}`;
 		const episode = episodeNum < 10 ? `0${episodeNum}` : `${episodeNum}`;
 
-		return {
+		const seriesInfo = {
 			imdb: args.query.imdb_id,
 			seriesTitle: seriesTitle,
 			episodeTitle:`${seriesTitle} s${season}e${episode}`,
@@ -187,13 +186,17 @@ const seriesInformation = async args => {
 						// third variation
 						`|\\bs[01]?\\d\\b[^a-zA-Z]*-[^a-zA-Z]*\\bs[01]?\\d\\b` + // or contains season range 's01 - s04'/'s01.-.s04'/'s1-s12'
 						// fourth variation
-						`|((\\bcomplete|all|full\\b).*(\\bseries|seasons\\b))` + // or contains any two word variation from (complete,all,full)+(series,seasons)
+						`|((\\bcomplete|all|full\\b).*(\\bseries|seasons|collection\\b))` + // or contains any two word variation from (complete,all,full)+(series,seasons)
 					`)` // finish capturing second condition
 			, 'i'), // case insensitive matcher
 			episodeMatcher: new RegExp(
-					`\\bs?0?${seasonNum}.*(x|ep?)?${episode}\\b`// match episode naming cases S01E01/1x01/S1.EP01..
-					, 'i') // case insensitive matcher
+					`\\bs?0?${seasonNum}[^0-9]*(x|ep?)?${episode}\\b`// match episode naming cases S01E01/1x01/S1.EP01..
+					, 'i'), // case insensitive matcher
 		};
+		seriesInfo.matchesName = title => seriesInfo.nameMatcher.test(title);
+		seriesInfo.matchesEpisode = title => seriesInfo.episodeMatcher.test(title);
+		seriesInfo.matches = title => seriesInfo.matchesName(title) || seriesInfo.matchesEpisode(title);
+		return seriesInfo;
 	} catch (e) {
 		return new Error(e.message);
 	}
@@ -201,8 +204,10 @@ const seriesInformation = async args => {
 
 const escapeTitle = title => {
 	return title.toLowerCase()
-		.replace('\'', '') // remove apostrophe
-		.replace(/[^0-9a-z ]/gi, ' '); // to lowercase and remove all non-alphanumeric chars
+		.normalize('NFKD') // normalize non-ASCII characters
+		.replace(/[\u0300-\u036F]/g, '')
+		.replace(/\./g, ' ') // replace dots with spaces
+		.replace(/[^\w- ]/gi, ''); // remove all non-alphanumeric chars
 };
 
 const server = require('http').createServer((req, res) => {
