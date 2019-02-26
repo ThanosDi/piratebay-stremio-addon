@@ -4,7 +4,7 @@ const torrentStream = require('torrent-stream');
 const parseVideo = require('video-name-parser');
 const _ = require('lodash');
 const PirateBay = require('thepiratebay');
-const {isEmpty, not, pipe, pathOr, equals, flatten, cond, prop, filter, sort} = require('ramda');
+const {isEmpty, not, pipe, pathOr, equals, flatten, cond, prop, filter, sort, ifElse} = require('ramda');
 const nameToImdb = require('name-to-imdb');
 const ONE_DAY = 86400;
 let cache;
@@ -157,11 +157,15 @@ const ptbSearch = async ( query, isCompleteSeason = false ) => {
 	return pathOr([], [ 'results' ], results);
 };
 
-const serializeResults = pipe(
-	flatten,
-	filter(file => file.seeders > 0),
-	sort(( a, b ) => b.seeders > a.seeders)
-);
+const serializeResults = ifElse(
+	isEmpty,
+	() => [],
+	pipe(
+		flatten,
+		filter(file => file.seeders > 0),
+		sort(( a, b ) => b.seeders > a.seeders)
+	)
+)
 
 const search = cond([
 	[ checkType('series'), async ( title ) => {

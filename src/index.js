@@ -38,7 +38,7 @@ const addon = new Stremio.Server({
 	'stream.find': async ( {query}, callback ) => {
 		try {
 			const title = await getTitle(query);
-			const results = await search({...title, type: query.type});
+			const results = await search({...title, type: query.type}) || [];
 			const resolve = results.map(file => {
 				const {infoHash} = magnet.decode(file.magnetLink);
 				const detail = `${file.name}\n💾 ${file.size}\n👤 ${file.seeders}`;
