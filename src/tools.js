@@ -42,17 +42,16 @@ const cinemeta = imdb_id => {
 };
 
 const padNumber = pipe(
-	n => n.toString(),
+	n => n.toString() || '',
 	s => s.padStart(2, '0')
 );
 
-const imdbIdToName = ( {imdb_id, season, episode} ) => {
+const imdbIdToName = ( {imdb_id, season = 0, episode = 0} ) => {
 	return new Promise(function ( resolve, reject ) {
 		imdb(imdb_id, function ( err, data ) {
 			if (err) {
 				reject(new Error(err.message));
 			}
-
 			resolve({
 				name: `${data.title} S${padNumber(season)}E${padNumber(episode)}`,
 				nameComplete: `${data.title} S${padNumber(season)} complete`
@@ -122,7 +121,6 @@ const isFull = pipe(
 );
 
 const ptbSearch = async ( query, isCompleteSeason = false ) => {
-	console.log(query);
 	const cachedResults = await cache.findOne({id: query}, {
 		'fields': {
 			'_id': 0,

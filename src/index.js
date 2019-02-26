@@ -1,7 +1,6 @@
 const Stremio = require('stremio-addons');
 const magnet = require('magnet-uri');
 const db = require('monk')(process.env.MONGO_URI);
-const {cond, equals, identity} = require('ramda');
 
 const {
 	initMongo,
