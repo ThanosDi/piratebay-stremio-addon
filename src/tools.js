@@ -121,7 +121,7 @@ const isFull = pipe(
 	not
 );
 
-const ptbSearch = async (query, isCompleteSeason = false)  => {
+const ptbSearch = async ( query, isCompleteSeason = false ) => {
 	console.log(query);
 	const cachedResults = await cache.findOne({id: query}, {
 		'fields': {
@@ -137,13 +137,14 @@ const ptbSearch = async (query, isCompleteSeason = false)  => {
 		category: 'video'
 	});
 
-	if (isCompleteSeason) {
-		await ptbResults.map(async (file) => {
-			console.log(file);
-			const torrent = await torrentStreamEngine(file.magnetLink);
-			console.log(torrent);
-		})
-	}
+	//@TODO
+	// if (isCompleteSeason) {
+	// 	await ptbResults.map(async (file) => {
+	// 		console.log(file);
+	// 		const torrent = await torrentStreamEngine(file.magnetLink);
+	// 		console.log(torrent);
+	// 	})
+	// }
 
 	const results = await cache.findOneAndUpdate(
 		{id: query},
@@ -161,12 +162,13 @@ const ptbSearch = async (query, isCompleteSeason = false)  => {
 const serializeResults = pipe(
 	flatten,
 	filter(file => file.seeders > 0),
-	sort((a,b) => b.seeders > a.seeders)
+	sort(( a, b ) => b.seeders > a.seeders)
 );
 
 const search = cond([
 	[ checkType('series'), async ( title ) => {
-		const res = await Promise.all([ ptbSearch(title.nameComplete, true) ]);
+		const res = await Promise.all([ ptbSearch(title.name) ]); // @TODO:
+		// ptbSearch(title.nameComplete, true)
 		return serializeResults(res);
 	} ],
 	[ checkType('movie'), async ( title ) => {
@@ -176,10 +178,6 @@ const search = cond([
 ]);
 
 module.exports = {
-	imdbIdToName,
-	torrentStreamEngine,
-	getMetaDataByName,
-	ptbSearch,
 	initMongo,
 	getTitle,
 	search

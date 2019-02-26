@@ -4,12 +4,9 @@ const db = require('monk')(process.env.MONGO_URI);
 const {cond, equals, identity} = require('ramda');
 
 const {
-	imdbIdToName,
-	ptbSearch,
 	initMongo,
 	getTitle,
-	search,
-	torrentStreamEngine
+	search
 } = require('./tools');
 
 const localUrl = 'http://localhost:7000/stremioget/stremio/v1';
@@ -40,18 +37,16 @@ const manifest = {
 
 const addon = new Stremio.Server({
 	'stream.find': async ( {query}, callback ) => {
-		console.log(query);
 		const title = await getTitle(query);
 		try {
 			const results = await search({...title, type: query.type});
-			const resolve = results.map( file => {
-				const {infoHash, announce } = magnet.decode(file.magnetLink);
-				const detail = `${file.name}\n👤 ${file.seeders}`;
-				return { infoHash, name: 'PTB', title: detail, availability: 1 };
-				});
+			const resolve = results.map(file => {
+				const {infoHash} = magnet.decode(file.magnetLink);
+				const detail = `${file.name}\n💾 ${file.size}\n👤 ${file.seeders}`;
+				return {infoHash, name: 'PTB', title: detail, availability: 1};
+			});
 			return callback(null, resolve);
 		} catch (e) {
-
 		}
 	},
 }, manifest);
