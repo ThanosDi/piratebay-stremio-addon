@@ -66,7 +66,7 @@ const checkType = type => pipe(
 );
 
 const getTitle = cond([
-	[ checkType('movie'), prop('imdb_id') ],
+	[ checkType('movie'), query => ({name: query.imdb_id}) ],
 	[ checkType('series'), imdbIdToName ],
 ]);
 
@@ -136,13 +136,12 @@ const ptbSearch = async ( query, isCompleteSeason = false ) => {
 	});
 
 	//@TODO
-	// if (isCompleteSeason) {
-	// 	await ptbResults.map(async (file) => {
-	// 		console.log(file);
-	// 		const torrent = await torrentStreamEngine(file.magnetLink);
-	// 		console.log(torrent);
-	// 	})
-	// }
+	if (isCompleteSeason) {
+		await ptbResults.results.map(async (file) => {
+			const {torrent} = await torrentStreamEngine(file.magnetLink);
+			// console.log(torrent.files);
+		})
+	}
 
 	const results = await cache.findOneAndUpdate(
 		{id: query},
@@ -169,8 +168,7 @@ const serializeResults = ifElse(
 
 const search = cond([
 	[ checkType('series'), async ( title ) => {
-		const res = await Promise.all([ ptbSearch(title.name) ]); // @TODO:
-		// ptbSearch(title.nameComplete, true)
+		const res = await Promise.all([ ptbSearch(title.name)]); // @TODO: , ptbSearch(title.nameComplete, true)
 		return serializeResults(res);
 	} ],
 	[ checkType('movie'), async ( title ) => {
