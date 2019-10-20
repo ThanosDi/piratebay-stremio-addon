@@ -1,4 +1,4 @@
-# Piratebay stremio addon
+ Piratebay stremio addon
 Fetch streams from piratebay
 
 ## Install

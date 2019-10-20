@@ -4,7 +4,7 @@ const torrentStream = require('torrent-stream');
 const parseVideo = require('video-name-parser');
 const _ = require('lodash');
 const PirateBay = require('thepiratebay');
-const {isEmpty, not, pipe, pathOr, equals, flatten, cond, prop, filter, sort, ifElse} = require('ramda');
+const {isEmpty, not, pipe, pathOr, equals, flatten, cond, prop, filter, sort, ifElse, propEq} = require('ramda');
 const nameToImdb = require('name-to-imdb');
 const ONE_DAY = 86400;
 let cache;
@@ -46,6 +46,12 @@ const padNumber = pipe(
 	s => s.padStart(2, '0')
 );
 
+const getImdbName = ifElse(
+	propEq('originalTitle', 'N/A'),
+	prop('title'),
+	prop('originalTitle')
+);
+
 const imdbIdToName = ( {imdb_id, season = 0, episode = 0} ) => {
 	return new Promise(function ( resolve, reject ) {
 		imdb(imdb_id, function ( err, data ) {
@@ -53,8 +59,8 @@ const imdbIdToName = ( {imdb_id, season = 0, episode = 0} ) => {
 				reject(new Error(err.message));
 			}
 			resolve({
-				name: `${data.title} S${padNumber(season)}E${padNumber(episode)}`,
-				nameComplete: `${data.title} S${padNumber(season)} complete`
+				name: `${getImdbName(data)} S${padNumber(season)}E${padNumber(episode)}`,
+				nameComplete: `${getImdbName(data)} S${padNumber(season)} complete`
 			});
 		});
 	});
@@ -120,6 +126,11 @@ const isFull = pipe(
 	not
 );
 
+const opts = {
+	orderBy: 'seeds',
+	sortBy: 'desc',
+	category: 'video'
+};
 const ptbSearch = async ( query, isCompleteSeason = false ) => {
 	const cachedResults = await cache.findOne({id: query}, {
 		'fields': {
@@ -129,11 +140,7 @@ const ptbSearch = async ( query, isCompleteSeason = false ) => {
 	});
 
 	if (isFull(cachedResults)) return pathOr([], [ 'results' ], cachedResults);
-	const ptbResults = await PirateBay.search(query, {
-		orderBy: 'seeds',
-		sortBy: 'desc',
-		category: 'video'
-	});
+	const ptbResults = await PirateBay.search(query, opts);
 
 	//@TODO
 	if (isCompleteSeason) {
