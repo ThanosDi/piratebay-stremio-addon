@@ -15,6 +15,7 @@
     "magnet-uri": "^5.1.7",
     "monk": "^6.0.6",
     "name-to-imdb": "^2.0.1",
+    "node-fetch": "^2.6.0",
     "ramda": "^0.25.0",
     "stremio-addons": "^2.8.13",
     "thepiratebay": "https://github.com/jaruba/thepiratebay/tarball/master",
