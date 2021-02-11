@@ -24,3 +24,5 @@ Make sure the plugin is installed and running
 Open a movie or series and enjoy
 
 ![Enjoy](screenshots/4.%20Enjoy.png?raw=true)
+
+Buy Me A Beer: `1KuCYGRWnBQDAgFiEuXc3Mtpk2yjMDadLo` BTC Wallet
